@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model invoice {
+  id_reservasi  Int          @id @db.UnsignedInt
+  id_fo         Int          @db.UnsignedInt
+  no_invoice    String       @db.VarChar(20)
+  tanggal_lunas DateTime     @default(now()) @db.Timestamp(0)
+  total_kamar   Int          @db.UnsignedInt
+  total_layanan Int          @db.UnsignedInt
+  pajak_layanan Int          @db.UnsignedInt
+  grand_total   Int          @db.UnsignedInt
+  created_at    DateTime     @default(now()) @db.Timestamp(0)
+  user_pegawai  user_pegawai @relation(fields: [id_fo], references: [id], onDelete: Cascade, map: "invoice_ibfk_1")
+  reservasi     reservasi    @relation(fields: [id_reservasi], references: [id], onDelete: Cascade, map: "invoice_ibfk_2")
+
+  @@index([id_fo], map: "invoice_ibfk_1")
+}
+
+model jenis_kamar {
+  id                 Int               @id @default(autoincrement()) @db.UnsignedTinyInt
+  nama               String            @db.VarChar(100)
+  gambar             String            @db.VarChar(100)
+  fasilitas_unggulan String            @db.Text
+  fasilitas          String            @db.Text
+  rincian            String            @db.Text
+  ukuran             Float             @db.Float
+  kapasitas          Int               @db.TinyInt
+  harga_dasar        Int               @db.UnsignedInt
+  kamar              kamar[]
+  reservasi_rooms    reservasi_rooms[]
+  tarif              tarif[]
+}
+
+model kamar {
+  no_kamar        String            @id @db.VarChar(4)
+  id_jenis_kamar  Int               @db.UnsignedTinyInt
+  jenis_bed       String            @db.VarChar(20)
+  no_lantai       Int               @db.TinyInt
+  is_smoking      Int               @default(0) @db.TinyInt
+  created_at      DateTime          @default(now()) @db.Timestamp(0)
+  updated_at      DateTime          @default(now()) @db.Timestamp(0)
+  jenis_kamar     jenis_kamar       @relation(fields: [id_jenis_kamar], references: [id], onDelete: Cascade, map: "kamar_ibfk_1")
+  reservasi_rooms reservasi_rooms[]
+
+  @@index([id_jenis_kamar], map: "id_jenis_kamar")
+}
+
+model layanan_tambahan {
+  id                Int                 @id @default(autoincrement()) @db.UnsignedTinyInt
+  nama              String              @db.VarChar(100)
+  satuan            String              @db.VarChar(10)
+  tarif             Int                 @db.UnsignedInt
+  created_at        DateTime            @default(now()) @db.Timestamp(0)
+  updated_at        DateTime            @default(now()) @db.Timestamp(0)
+  reservasi_layanan reservasi_layanan[]
+}
+
+model reservasi {
+  id                  Int                 @id @default(autoincrement()) @db.UnsignedInt
+  id_customer         Int                 @db.UnsignedInt
+  id_sm               Int?                @db.UnsignedInt
+  id_booking          String?             @unique(map: "id_booking") @db.VarChar(20)
+  booked_at           DateTime            @default(now()) @db.Timestamp(0)
+  checked_in          DateTime?           @db.Timestamp(0)
+  checked_out         DateTime?           @db.Timestamp(0)
+  jumlah_malam        Int                 @db.UnsignedTinyInt
+  jumlah_dewasa       Int                 @default(0) @db.UnsignedTinyInt
+  jumlah_anak         Int                 @default(0) @db.UnsignedTinyInt
+  tanggal_dp          DateTime?           @db.Timestamp(0)
+  jumlah_dp           Int?
+  status              String              @db.VarChar(10)
+  total               Int                 @db.UnsignedInt
+  deposit             Int                 @db.UnsignedInt
+  permintaan_tambahan String?             @db.Text
+  bukti_transfer      String?             @db.VarChar(100)
+  created_at          DateTime            @default(now()) @db.Timestamp(0)
+  updated_at          DateTime            @default(now()) @db.Timestamp(0)
+  invoice             invoice?
+  user_customer       user_customer       @relation(fields: [id_customer], references: [id], onDelete: Cascade, map: "reservasi_ibfk_1")
+  user_pegawai        user_pegawai?       @relation(fields: [id_sm], references: [id], onDelete: Cascade, map: "reservasi_ibfk_2")
+  reservasi_layanan   reservasi_layanan[]
+
+  @@index([id_customer], map: "id_customer")
+  @@index([id_sm], map: "id_sm")
+}
+
+model reservasi_layanan {
+  id               Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_reservasi     Int              @db.UnsignedInt
+  id_layanan       Int              @db.UnsignedTinyInt
+  tanggal_pakai    DateTime         @default(now()) @db.Timestamp(0)
+  qty              Int              @db.UnsignedTinyInt
+  total            Int              @db.UnsignedInt
+  created_at       DateTime         @default(now()) @db.Timestamp(0)
+  layanan_tambahan layanan_tambahan @relation(fields: [id_layanan], references: [id], onDelete: Cascade, map: "reservasi_layanan_ibfk_1")
+  reservasi        reservasi        @relation(fields: [id_reservasi], references: [id], onDelete: Cascade, map: "reservasi_layanan_ibfk_2")
+
+  @@index([id_layanan], map: "id_layanan")
+  @@index([id_reservasi], map: "id_reservasi")
+}
+
+model reservasi_logs {
+  id           Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_reservasi Int      @db.UnsignedInt
+  id_pegawai   Int?     @db.UnsignedInt
+  content      String   @db.Text
+  created_at   DateTime @default(now()) @db.Timestamp(0)
+}
+
+model reservasi_rooms {
+  id              Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_reservasi    Int         @db.UnsignedInt
+  no_kamar        String?     @db.VarChar(4)
+  id_jenis_kamar  Int         @db.UnsignedTinyInt
+  harga_per_malam Int         @db.UnsignedInt
+  jenis_kamar     jenis_kamar @relation(fields: [id_jenis_kamar], references: [id], onDelete: Cascade, map: "reservasi_rooms_ibfk_1")
+  kamar           kamar?      @relation(fields: [no_kamar], references: [no_kamar], onDelete: Cascade, map: "reservasi_rooms_ibfk_2")
+
+  @@index([id_jenis_kamar], map: "id_jenis_kamar")
+  @@index([no_kamar], map: "id_kamar")
+}
+
+model season {
+  id            Int      @id @default(autoincrement()) @db.UnsignedInt
+  type          String   @db.Char(1)
+  nama          String   @db.VarChar(100)
+  tanggal_start DateTime @db.Date
+  tanggal_end   DateTime @db.Date
+  created_at    DateTime @default(now()) @db.Timestamp(0)
+  updated_at    DateTime @default(now()) @db.Timestamp(0)
+  tarif         tarif[]
+}
+
+model tarif {
+  id             Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_jenis_kamar Int         @db.UnsignedTinyInt
+  id_season      Int         @db.UnsignedInt
+  harga          Int         @db.UnsignedInt
+  jenis_kamar    jenis_kamar @relation(fields: [id_jenis_kamar], references: [id], onDelete: Cascade, map: "tarif_ibfk_1")
+  season         season      @relation(fields: [id_season], references: [id], onDelete: Cascade, map: "tarif_ibfk_2")
+
+  @@index([id_jenis_kamar], map: "id_jenis_kamar")
+  @@index([id_season], map: "id_season")
+}
+
+model user_customer {
+  id              Int                @id @default(autoincrement()) @db.UnsignedInt
+  type            user_customer_type
+  nama            String             @db.VarChar(100)
+  nama_institusi  String?            @db.VarChar(100)
+  no_identitas    String             @db.VarChar(50)
+  jenis_identitas String             @db.VarChar(10)
+  no_telp         String             @db.VarChar(20)
+  email           String             @db.VarChar(100)
+  password        String?            @db.VarChar(100)
+  alamat          String             @db.Text
+  created_at      DateTime           @default(now()) @db.Timestamp(0)
+  updated_at      DateTime           @default(now()) @db.Timestamp(0)
+  reservasi       reservasi[]
+
+  @@unique([type, email], map: "type")
+}
+
+model user_pegawai {
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  role       String
+  nama       String      @db.VarChar(100)
+  username   String      @unique(map: "username") @db.VarChar(100)
+  password   String      @db.VarChar(100)
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  updated_at DateTime    @default(now()) @db.Timestamp(0)
+  invoice    invoice[]
+  reservasi  reservasi[]
+}
+
+model auth_tokens {
+  token        String                @id @db.VarChar(64)
+  id_user      Int                   @db.UnsignedInt
+  user_type    auth_tokens_user_type
+  revoked      Int                   @default(0) @db.TinyInt
+  created_at   DateTime              @default(now()) @db.Timestamp(0)
+  last_used_at DateTime              @default(now()) @db.Timestamp(0)
+  expires_at   DateTime              @default(now()) @db.Timestamp(0)
+}
+
+enum user_customer_type {
+  p
+  g
+}
+
+enum auth_tokens_user_type {
+  c
+  p
+}

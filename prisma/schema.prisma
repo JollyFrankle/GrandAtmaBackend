@@ -128,13 +128,13 @@ model reservasi_rooms {
 }
 
 model season {
-  id            Int      @id @default(autoincrement()) @db.UnsignedInt
-  type          String   @db.Char(1)
-  nama          String   @db.VarChar(100)
-  tanggal_start DateTime @db.Date
-  tanggal_end   DateTime @db.Date
-  created_at    DateTime @default(now()) @db.Timestamp(0)
-  updated_at    DateTime @default(now()) @db.Timestamp(0)
+  id            Int         @id @default(autoincrement()) @db.UnsignedInt
+  type          season_type
+  nama          String      @db.VarChar(100)
+  tanggal_start DateTime    @db.Date
+  tanggal_end   DateTime    @db.Date
+  created_at    DateTime    @default(now()) @db.Timestamp(0)
+  updated_at    DateTime    @default(now()) @db.Timestamp(0)
   tarif         tarif[]
 }
 
@@ -198,4 +198,9 @@ enum user_customer_type {
 enum auth_tokens_user_type {
   c
   p
+}
+
+enum season_type {
+  l
+  h
 }

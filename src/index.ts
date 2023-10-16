@@ -1,14 +1,15 @@
-import Middlewares from "./Middlewares";
-import AuthController from "./controller/AuthController";
 import express from "express";
-import KamarController from "./controller/KamarController";
 import multer from "multer";
+import Middlewares from "./modules/Middlewares";
+import AuthController from "./controller/AuthController";
+import { router as KamarRouter } from "./controller/KamarController";
+import { router as SeasonRouter } from "./controller/SeasonController";
 
 const app = express();
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-app.use(multer().none())
+app.use(multer().any())
 
 // Middleware
 app.use(Middlewares.cors)
@@ -25,10 +26,8 @@ app.post("/customer/change-password", AuthController.changePasswordC)
 // Pegawai Middleware
 app.post("/pegawai/logout", AuthController.logoutPegawai)
 app.post("/pegawai/change-password", AuthController.changePasswordP)
-app.get("/pegawai/kamar", KamarController.index)
-app.post("/pegawai/kamar", KamarController.store)
-app.put("/pegawai/kamar/:no_kamar", KamarController.update)
-app.delete("/pegawai/kamar/:no_kamar", KamarController.destroy)
+app.use("/pegawai/kamar", KamarRouter)
+app.use("/pegawai/season", SeasonRouter)
 
 // Error 404
 app.use(Middlewares.notFound)

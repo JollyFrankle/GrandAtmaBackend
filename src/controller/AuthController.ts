@@ -4,7 +4,7 @@ import PrismaScope from "../modules/PrismaService";
 import bcrypt from "bcrypt";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
-import { CustomerRequest, PegawaiRequest } from "../Middlewares";
+import { CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
 
 export default class AuthController {
     static async login(req: Request, res: Response) {
@@ -17,10 +17,10 @@ export default class AuthController {
             }
         })
 
-        if (validation.hasErrors()) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: validation.getErrors()
+                errors: validation.errors
             }, 422)
         }
 
@@ -92,10 +92,10 @@ export default class AuthController {
             }
         })
 
-        if (validation.hasErrors()) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: validation.getErrors()
+                errors: validation.errors
             }, 400)
         }
 
@@ -156,10 +156,10 @@ export default class AuthController {
             }
         })
 
-        if (validation.hasErrors()) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: validation.getErrors()
+                errors: validation.errors
             }, 422)
         }
 
@@ -205,10 +205,10 @@ export default class AuthController {
             }
         })
 
-        if (validation.hasErrors()) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: validation.getErrors()
+                errors: validation.errors
             }, 422)
         }
 

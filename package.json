@@ -28,6 +28,8 @@
     "crypto": "^1.0.1",
     "dotenv": "^16.3.1",
     "jsonwebtoken": "^9.0.2",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.1"
   }

@@ -1,8 +1,9 @@
 import { Request } from "express";
+import moment from "moment-timezone";
 
 export default class Validation {
     private data: { [key: string]: any };
-    private errors: { [key: string]: string } = {};
+    errors: { [key: string]: string } = {};
     private validatedData: { [key: string]: any } = {};
 
     constructor(data: { [key: string]: string }) {
@@ -15,10 +16,14 @@ export default class Validation {
 
             if (rules[rule].required && !value) {
                 this.errors[rule] = `${rule} wajib diisi`;
+            } else if (!value) {
+                // no value and not required, ignore further checks
             } else if (rules[rule].minLength && value.length < rules[rule].minLength!!) {
                 this.errors[rule] = `${rule} harus berisi minimal ${rules[rule].minLength} karakter`;
             } else if (rules[rule].maxLength && value.length > rules[rule].maxLength!!) {
                 this.errors[rule] = `${rule} harus berisi maksimal ${rules[rule].maxLength} karakter`;
+            } else if (rules[rule].in && !rules[rule].in!!.includes(value)) {
+                this.errors[rule] = `${rule} harus salah satu dari ${rules[rule].in}`;
             } else {
                 switch (rules[rule].type) {
                     case "email":
@@ -33,12 +38,50 @@ export default class Validation {
                             this.errors[rule] = `${rule} harus paling kecil ${rules[rule].min}`;
                         } else if (rules[rule].max && value > rules[rule].max!!) {
                             this.errors[rule] = `${rule} harus paling tinggi ${rules[rule].max}`;
+                        } else {
+                            // [OK] Validated
+                            this.validatedData[rule] = +value
+                        }
+                        break;
+                    case "timestamp":
+                        const time = moment(value)
+                        if (!time.isValid()) {
+                            this.errors[rule] = `${rule} harus berupa tanggal yang valid`;
+                        } else if (rules[rule].minDate && time.isBefore(rules[rule].minDate)) {
+                            this.errors[rule] = `${rule} harus paling cepat ${rules[rule].minDate}`;
+                        } else if (rules[rule].maxDate && time.isAfter(rules[rule].maxDate)) {
+                            this.errors[rule] = `${rule} harus paling lambat ${rules[rule].maxDate}`;
+                        } else {
+                            // [OK] Validated
+                            this.validatedData[rule] = time.toDate()
+                        }
+                        break;
+                    case "date":
+                        const date = moment(value).add(moment().utcOffset(), 'minutes')
+                        if (!date.isValid()) {
+                            this.errors[rule] = `${rule} harus berupa tanggal yang valid`;
+                        } else if (rules[rule].minDate && date.isBefore(rules[rule].minDate)) {
+                            this.errors[rule] = `${rule} harus paling cepat ${rules[rule].minDate}`;
+                        } else if (rules[rule].maxDate && date.isAfter(rules[rule].maxDate)) {
+                            this.errors[rule] = `${rule} harus paling lambat ${rules[rule].maxDate}`;
+                        } else {
+                            // [OK] Validated
+                            this.validatedData[rule] = date.toDate()
+                        }
+                        break;
+                    case "array":
+                        if (!Array.isArray(value)) {
+                            this.errors[rule] = `${rule} harus berupa array`;
                         }
                         break;
                 }
+
+                if (!this.validatedData[rule] && rules[rule].customRule && rules[rule].customRule!!(value) !== null) {
+                    this.errors[rule] = rules[rule].customRule!!(value)!!
+                }
             }
 
-            if (!this.errors[rule]) {
+            if (!this.validatedData[rule]) {
                 this.validatedData[rule] = value;
             }
         }
@@ -46,19 +89,15 @@ export default class Validation {
         return this;
     }
 
-    hasErrors() {
+    fails() {
         return Object.keys(this.errors).length > 0;
-    }
-
-    getErrors() {
-        return this.errors;
     }
 
     /**
      * Get validated data
      */
     validated() {
-        return this.data;
+        return this.validatedData;
     }
 
     static body(req: Request, rules: { [key: string]: ValidationRule }) {
@@ -78,7 +117,16 @@ interface ValidationRule {
     required?: boolean;
     minLength?: number;
     maxLength?: number;
-    type?: "email" | "number";
+    in?: any[];
+    type?: "email" | "number" | "date" | "timestamp" | "array";
     min?: number;
     max?: number;
+    minDate?: Date | moment.Moment | string;
+    maxDate?: Date | moment.Moment | string;
+    customRule?: (value: any) => string | null
+}
+
+interface ComparisonRule<T> {
+    sign: '=' | '<' | '>' | '<=' | '>=' | '!=';
+    value: T
 }

@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import Authentication from "./modules/Authentication";
-import { ApiResponse } from "./modules/ApiResponses";
-import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from "./modules/Models";
-import PrismaScope from "./modules/PrismaService";
+import Authentication from "./Authentication";
+import { ApiResponse } from "./ApiResponses";
+import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from "./Models";
+import PrismaScope from "./PrismaService";
 
 export interface CustomerOrPegawaiRequest extends Request {
     data?: {

@@ -1,5 +1,5 @@
-import { Response } from "express";
-import { PegawaiRequest } from "../Middlewares";
+import { Response, Router } from "express";
+import { PegawaiRequest } from "../modules/Middlewares";
 import { ApiResponse } from "../modules/ApiResponses";
 import PrismaScope from "../modules/PrismaService";
 import Validation from "../modules/Validation";
@@ -24,10 +24,10 @@ export default class KamarController {
             }
         })
 
-        if (validation.hasErrors()) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: validation.getErrors()
+                errors: validation.errors
             }, 422)
         }
 
@@ -72,10 +72,10 @@ export default class KamarController {
             }
         })
 
-        if (validation.hasErrors()) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: validation.getErrors()
+                errors: validation.errors
             }, 422)
         }
 
@@ -99,6 +99,30 @@ export default class KamarController {
         })
     }
 
+    static async get(req: PegawaiRequest, res: Response) {
+        const { no_kamar } = req.params
+
+        return PrismaScope(async (prisma) => {
+            const kamar = await prisma.kamar.findUnique({
+                where: {
+                    no_kamar: no_kamar
+                }
+            })
+
+            if (!kamar) {
+                return ApiResponse.error(res, {
+                    message: "Kamar tidak ditemukan",
+                    errors: {}
+                }, 404)
+            }
+
+            return ApiResponse.success(res, {
+                message: "Berhasil mendapatkan data kamar",
+                data: kamar
+            })
+        })
+    }
+
     static async update(req: PegawaiRequest, res: Response) {
         const noKamarValidation = Validation.params(req, {
             no_kamar: {
@@ -106,10 +130,10 @@ export default class KamarController {
             }
         })
 
-        if (noKamarValidation.hasErrors()) {
+        if (noKamarValidation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: noKamarValidation.getErrors()
+                errors: noKamarValidation.errors
             }, 422)
         }
 
@@ -130,10 +154,10 @@ export default class KamarController {
             }
         })
 
-        if (validation.hasErrors()) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
-                errors: validation.getErrors()
+                errors: validation.errors
             }, 422)
         }
 
@@ -160,20 +184,7 @@ export default class KamarController {
     }
 
     static async destroy(req: PegawaiRequest, res: Response) {
-        const validation = Validation.params(req, {
-            no_kamar: {
-                required: true
-            }
-        })
-
-        if (validation.hasErrors()) {
-            return ApiResponse.error(res, {
-                message: "Validasi gagal",
-                errors: validation.getErrors()
-            }, 422)
-        }
-
-        const { no_kamar } = validation.validated()
+        const { no_kamar } = req.params
 
         return PrismaScope(async (prisma) => {
             await prisma.kamar.delete({
@@ -189,3 +200,11 @@ export default class KamarController {
         })
     }
 }
+
+// Routing
+export const router = Router()
+router.get('/', KamarController.index)
+router.post('/', KamarController.store)
+router.get('/:no_kamar', KamarController.get)
+router.put('/:no_kamar', KamarController.update)
+router.delete('/:no_kamar', KamarController.destroy)

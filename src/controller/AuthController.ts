@@ -4,7 +4,9 @@ import PrismaScope from "../modules/PrismaService";
 import bcrypt from "bcrypt";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
-import { CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
+import { CustomerOrPegawaiRequest, CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
+import { JwtUserCustomer, JwtUserPegawai } from "../modules/Models";
+import Mail from "../modules/Mail";
 
 export default class AuthController {
     static async login(req: Request, res: Response) {
@@ -28,14 +30,21 @@ export default class AuthController {
 
         const userCustomer = await Authentication.attemptCustomer(username, password)
         if (userCustomer !== null) {
-            const token = await Authentication.generateTokenC(userCustomer)
-            return ApiResponse.success(res, {
-                message: "Berhasil login sebagai customer",
-                data: {
-                    user: userCustomer,
-                    token: token
-                }
-            })
+            if (userCustomer.verified_at === null) {
+                return ApiResponse.error(res, {
+                    message: "Akun belum diverifikasi",
+                    errors: null
+                }, 400)
+            } else {
+                const token = await Authentication.generateTokenC(userCustomer)
+                return ApiResponse.success(res, {
+                    message: "Berhasil login sebagai customer",
+                    data: {
+                        user: userCustomer,
+                        token: token
+                    }
+                })
+            }
         }
 
         const userPegawai = await Authentication.attemptPegawai(username, password)
@@ -143,16 +152,14 @@ export default class AuthController {
         })
     }
 
-    static async changePasswordC(req: CustomerRequest, res: Response) {
-        const user = req.data?.user!!
-
+    static async changePassword(req: CustomerOrPegawaiRequest, res: Response) {
         const validation = Validation.body(req, {
-            old_password: {
-                required: true
-            },
             new_password: {
                 required: true,
                 minLength: 8
+            },
+            token: {
+                required: true
             }
         })
 
@@ -163,25 +170,53 @@ export default class AuthController {
             }, 422)
         }
 
-        const { old_password, new_password } = validation.validated();
+        const { new_password, token } = validation.validated();
 
-        const isPasswordMatch = await bcrypt.compare(old_password, user.password!!);
-
-        if (!isPasswordMatch) {
+        // check token
+        const decodedToken = Authentication.decodeToken<JwtUserCustomer|JwtUserPegawai>(token)
+        if (decodedToken === null) {
             return ApiResponse.error(res, {
-                message: "Password lama salah",
+                message: "Token tidak valid",
+                errors: null
+            }, 400)
+        }
+
+        // get user
+        const user = await Authentication.getUserFromToken(decodedToken, 'passreset')
+        if (user === null) {
+            return ApiResponse.error(res, {
+                message: "Token tidak valid",
                 errors: null
             }, 400)
         }
 
         const hashedPassword = await bcrypt.hash(new_password, 10);
-        PrismaScope(async (prisma) => {
-            await prisma.user_customer.update({
+        await PrismaScope(async (prisma) => {
+            if (decodedToken.user_type === 'c') {
+                await prisma.user_customer.update({
+                    where: {
+                        id: user.id
+                    },
+                    data: {
+                        password: hashedPassword
+                    }
+                })
+            } else {
+                await prisma.user_pegawai.update({
+                    where: {
+                        id: user.id
+                    },
+                    data: {
+                        password: hashedPassword
+                    }
+                })
+            }
+
+            // Delete all token
+            await prisma.tokens.deleteMany({
                 where: {
-                    id: user.id
-                },
-                data: {
-                    password: hashedPassword
+                    id_user: user.id,
+                    intent: 'passreset'
                 }
             })
         })
@@ -192,16 +227,15 @@ export default class AuthController {
         })
     }
 
-    static async changePasswordP(req: PegawaiRequest, res: Response) {
-        const user = req.data?.user!!
-
+    static async resetPassword(req: Request, res: Response) {
         const validation = Validation.body(req, {
-            old_password: {
-                required: true
-            },
-            new_password: {
+            username: {
                 required: true,
-                minLength: 8
+                type: "email"
+            },
+            type: {
+                required: true,
+                in: ['c', 'p']
             }
         })
 
@@ -212,32 +246,48 @@ export default class AuthController {
             }, 422)
         }
 
-        const { old_password, new_password } = validation.validated();
+        const { username, type } = validation.validated();
 
-        const isPasswordMatch = await bcrypt.compare(old_password, user.password!!);
+        return await PrismaScope(async (prisma) => {
+            if (type === 'c') {
+                const user = await prisma.user_customer.findUnique({
+                    where: {
+                        type_email: {
+                            type: 'p',
+                            email: username
+                        }
+                    }
+                })
 
-        if (!isPasswordMatch) {
-            return ApiResponse.error(res, {
-                message: "Password lama salah",
-                errors: null
-            }, 400)
-        }
-
-        const hashedPassword = await bcrypt.hash(new_password, 10);
-        PrismaScope(async (prisma) => {
-            await prisma.user_pegawai.update({
-                where: {
-                    id: user.id
-                },
-                data: {
-                    password: hashedPassword
+                if (user === null) {
+                    return ApiResponse.error(res, {
+                        message: "Email tidak terdaftar",
+                        errors: null
+                    }, 400)
                 }
-            })
-        })
 
-        return ApiResponse.success(res, {
-            message: "Berhasil mengubah password",
-            data: null
+                // Send email
+                const token = await Authentication.generateTokenC(user, 'passreset')
+                const decodedToken = Authentication.decodeToken<JwtUserCustomer>(token)
+                try {
+                    await Mail.sendPasswordReset(user, token, new Date(decodedToken!!.exp!! * 1000))
+                    return ApiResponse.success(res, {
+                        message: "Berhasil mengirim email reset password",
+                        data: null
+                    })
+                } catch (e) {
+                    return ApiResponse.error(res, {
+                        message: "Gagal mengirim email reset password",
+                        errors: null
+                    }, 500)
+                }
+
+            } else {
+                return ApiResponse.error(res, {
+                    message: "Belum bisa reset password pegawai: BELUM ADA 'EMAIL' DI DATABASE",
+                    errors: null
+                }, 400)
+            }
         })
     }
 }

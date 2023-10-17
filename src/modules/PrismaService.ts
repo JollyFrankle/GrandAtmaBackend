@@ -9,11 +9,8 @@ export default async function PrismaScope<T=any>(onClientReady: (prisma: PrismaC
     const prisma = new PrismaClient()
 
     const result = onClientReady(prisma).catch(e => {
-        console.error(e)
-        return null
-    }).finally(async () => {
-        await prisma.$disconnect()
+        throw e
     })
-
+    await prisma.$disconnect()
     return result
 }

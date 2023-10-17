@@ -60,8 +60,12 @@ export default class Validation {
                         const date = moment(value).add(moment().utcOffset(), 'minutes')
                         if (!date.isValid()) {
                             this.errors[rule] = `${rule} harus berupa tanggal yang valid`;
-                        } else if (rules[rule].minDate && date.isBefore(rules[rule].minDate)) {
-                            this.errors[rule] = `${rule} harus paling cepat ${rules[rule].minDate}`;
+                        } else if (rules[rule].minDate) {
+                            if (typeof rules[rule].minDate === "string") {
+                                const minDate = rules[rules[rule].minDate!! as string].type === 'date' ? moment(this.validatedData[rules[rule].minDate!! as string]) : moment(rules[rules[rule].minDate!! as string].minDate!!).add(moment().utcOffset(), 'minutes')
+                            } else if (date.isBefore(rules[rule].minDate)) {
+                                this.errors[rule] = `${rule} harus paling cepat ${rules[rule].minDate}`;
+                            }
                         } else if (rules[rule].maxDate && date.isAfter(rules[rule].maxDate)) {
                             this.errors[rule] = `${rule} harus paling lambat ${rules[rule].maxDate}`;
                         } else {

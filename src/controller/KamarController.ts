@@ -3,9 +3,14 @@ import { PegawaiRequest } from "../modules/Middlewares";
 import { ApiResponse } from "../modules/ApiResponses";
 import PrismaScope from "../modules/PrismaService";
 import Validation from "../modules/Validation";
+import Authentication from "../modules/Authentication";
 
 export default class KamarController {
     static async index(req: PegawaiRequest, res: Response) {
+        if(!Authentication.authorization(req, ['admin'])) {
+            return Authentication.defaultUnauthorizedResponse(res)
+        }
+
         const validation = Validation.query(req, {
             search: {
                 required: false
@@ -53,7 +58,39 @@ export default class KamarController {
         })
     }
 
+    static async show(req: PegawaiRequest, res: Response) {
+        if(!Authentication.authorization(req, ['admin'])) {
+            return Authentication.defaultUnauthorizedResponse(res)
+        }
+
+        const { no_kamar } = req.params
+
+        return PrismaScope(async (prisma) => {
+            const kamar = await prisma.kamar.findUnique({
+                where: {
+                    no_kamar: no_kamar
+                }
+            })
+
+            if (!kamar) {
+                return ApiResponse.error(res, {
+                    message: "Kamar tidak ditemukan",
+                    errors: {}
+                }, 404)
+            }
+
+            return ApiResponse.success(res, {
+                message: "Berhasil mendapatkan data kamar",
+                data: kamar
+            })
+        })
+    }
+
     static async store(req: PegawaiRequest, res: Response) {
+        if(!Authentication.authorization(req, ['admin'])) {
+            return Authentication.defaultUnauthorizedResponse(res)
+        }
+
         const validation = Validation.body(req, {
             no_kamar: {
                 required: true
@@ -99,31 +136,11 @@ export default class KamarController {
         })
     }
 
-    static async get(req: PegawaiRequest, res: Response) {
-        const { no_kamar } = req.params
-
-        return PrismaScope(async (prisma) => {
-            const kamar = await prisma.kamar.findUnique({
-                where: {
-                    no_kamar: no_kamar
-                }
-            })
-
-            if (!kamar) {
-                return ApiResponse.error(res, {
-                    message: "Kamar tidak ditemukan",
-                    errors: {}
-                }, 404)
-            }
-
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data kamar",
-                data: kamar
-            })
-        })
-    }
-
     static async update(req: PegawaiRequest, res: Response) {
+        if(!Authentication.authorization(req, ['admin'])) {
+            return Authentication.defaultUnauthorizedResponse(res)
+        }
+
         const noKamarValidation = Validation.params(req, {
             no_kamar: {
                 required: true
@@ -184,6 +201,10 @@ export default class KamarController {
     }
 
     static async destroy(req: PegawaiRequest, res: Response) {
+        if(!Authentication.authorization(req, ['admin'])) {
+            return Authentication.defaultUnauthorizedResponse(res)
+        }
+
         const { no_kamar } = req.params
 
         return PrismaScope(async (prisma) => {
@@ -204,7 +225,7 @@ export default class KamarController {
 // Routing
 export const router = Router()
 router.get('/', KamarController.index)
+router.get('/:no_kamar', KamarController.show)
 router.post('/', KamarController.store)
-router.get('/:no_kamar', KamarController.get)
 router.put('/:no_kamar', KamarController.update)
 router.delete('/:no_kamar', KamarController.destroy)

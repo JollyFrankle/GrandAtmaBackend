@@ -29,13 +29,13 @@ export default class Middlewares {
 
     private static getDecodedToken<T>(req: Request) {
         // Check token exists
-        const token = Authentication.token<string|undefined>(req)
+        const token = Authentication.authToken<string|undefined>(req)
         if (token === undefined) {
             return null
         }
 
         // Check token valid
-        const decodedToken = Authentication.verifyToken<T>(token)
+        const decodedToken = Authentication.decodeToken<T>(token)
         if (decodedToken === null) {
             return null
         }
@@ -53,42 +53,20 @@ export default class Middlewares {
             }, 401)
         }
 
-        // Check user exists
-        return PrismaScope(async (prisma) => {
-            const tokenValid = await prisma.auth_tokens.findFirst({
-                where: {
-                    token: decodedToken.token,
-                    revoked: 0
-                }
-            })
+        // Get user
+        const user = await Authentication.getUserFromToken(decodedToken)
+        if (user === null) {
+            return ApiResponse.error(res, {
+                message: "Unauthorized",
+                errors: null
+            }, 401)
+        }
 
-            if (tokenValid === null) {
-                return ApiResponse.error(res, {
-                    message: "Unauthorized",
-                    errors: null
-                }, 401)
-            }
-
-            const user = await prisma.user_customer.findUnique({
-                where: {
-                    id: decodedToken.id,
-                    // enabled: 1
-                }
-            })
-
-            if (user === null) {
-                return ApiResponse.error(res, {
-                    message: "Unauthorized",
-                    errors: null
-                }, 401)
-            }
-
-            req.data = {
-                user: user,
-                token: decodedToken.token
-            }
-            next()
-        })
+        req.data = {
+            user: user as UserCustomer,
+            token: decodedToken.token
+        }
+        next()
     }
 
     static async pegawai(req: PegawaiRequest, res: Response, next: NextFunction) {
@@ -101,42 +79,20 @@ export default class Middlewares {
             }, 401)
         }
 
-        // Check user exists
-        return PrismaScope(async (prisma) => {
-            const tokenValid = await prisma.auth_tokens.findFirst({
-                where: {
-                    token: decodedToken.token,
-                    revoked: 0
-                }
-            })
+        // Get user
+        const user = await Authentication.getUserFromToken(decodedToken)
+        if (user === null) {
+            return ApiResponse.error(res, {
+                message: "Unauthorized",
+                errors: null
+            }, 401)
+        }
 
-            if (tokenValid === null) {
-                return ApiResponse.error(res, {
-                    message: "Unauthorized",
-                    errors: null
-                }, 401)
-            }
-
-            const user = await prisma.user_pegawai.findUnique({
-                where: {
-                    id: decodedToken.id,
-                    // enabled: 1
-                }
-            })
-
-            if (user === null) {
-                return ApiResponse.error(res, {
-                    message: "Unauthorized",
-                    errors: null
-                }, 401)
-            }
-
-            req.data = {
-                user: user,
-                token: decodedToken.token
-            }
-            next()
-        })
+        req.data = {
+            user: user as UserPegawai,
+            token: decodedToken.token
+        }
+        next()
     }
 
     static async errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
@@ -155,7 +111,7 @@ export default class Middlewares {
         next()
     }
 
-    static async notFound(req: Request, res: Response, next: NextFunction) {
+    static async notFound(_: Request, res: Response, __: NextFunction) {
         return ApiResponse.error(res, {
             message: "Not found",
             errors: null

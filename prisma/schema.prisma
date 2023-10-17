@@ -86,6 +86,7 @@ model reservasi {
   user_customer       user_customer       @relation(fields: [id_customer], references: [id], onDelete: Cascade, map: "reservasi_ibfk_1")
   user_pegawai        user_pegawai?       @relation(fields: [id_sm], references: [id], onDelete: Cascade, map: "reservasi_ibfk_2")
   reservasi_layanan   reservasi_layanan[]
+  reservasi_rooms     reservasi_rooms[]
 
   @@index([id_customer], map: "id_customer")
   @@index([id_sm], map: "id_sm")
@@ -122,9 +123,11 @@ model reservasi_rooms {
   harga_per_malam Int         @db.UnsignedInt
   jenis_kamar     jenis_kamar @relation(fields: [id_jenis_kamar], references: [id], onDelete: Cascade, map: "reservasi_rooms_ibfk_1")
   kamar           kamar?      @relation(fields: [no_kamar], references: [no_kamar], onDelete: Cascade, map: "reservasi_rooms_ibfk_2")
+  reservasi       reservasi   @relation(fields: [id_reservasi], references: [id], onDelete: Cascade, map: "reservasi_rooms_ibfk_3")
 
   @@index([id_jenis_kamar], map: "id_jenis_kamar")
   @@index([no_kamar], map: "id_kamar")
+  @@index([id_reservasi], map: "id_reservasi")
 }
 
 model season {
@@ -151,18 +154,19 @@ model tarif {
 }
 
 model user_customer {
-  id              Int                @id @default(autoincrement()) @db.UnsignedInt
+  id              Int                           @id @default(autoincrement()) @db.UnsignedInt
   type            user_customer_type
-  nama            String             @db.VarChar(100)
-  nama_institusi  String?            @db.VarChar(100)
-  no_identitas    String             @db.VarChar(50)
-  jenis_identitas String             @db.VarChar(10)
-  no_telp         String             @db.VarChar(20)
-  email           String             @db.VarChar(100)
-  password        String?            @db.VarChar(100)
-  alamat          String             @db.Text
-  created_at      DateTime           @default(now()) @db.Timestamp(0)
-  updated_at      DateTime           @default(now()) @db.Timestamp(0)
+  nama            String                        @db.VarChar(100)
+  nama_institusi  String?                       @db.VarChar(100)
+  no_identitas    String                        @db.VarChar(50)
+  jenis_identitas user_customer_jenis_identitas
+  no_telp         String                        @db.VarChar(20)
+  email           String                        @db.VarChar(100)
+  password        String?                       @db.VarChar(100)
+  alamat          String                        @db.Text
+  verified_at     DateTime?                     @db.Timestamp(0)
+  created_at      DateTime                      @default(now()) @db.Timestamp(0)
+  updated_at      DateTime                      @default(now()) @db.Timestamp(0)
   reservasi       reservasi[]
 
   @@unique([type, email], map: "type")
@@ -172,7 +176,7 @@ model user_pegawai {
   id         Int         @id @default(autoincrement()) @db.UnsignedInt
   role       String
   nama       String      @db.VarChar(100)
-  username   String      @unique(map: "username") @db.VarChar(100)
+  email      String      @unique(map: "username") @db.VarChar(100)
   password   String      @db.VarChar(100)
   created_at DateTime    @default(now()) @db.Timestamp(0)
   updated_at DateTime    @default(now()) @db.Timestamp(0)
@@ -180,14 +184,15 @@ model user_pegawai {
   reservasi  reservasi[]
 }
 
-model auth_tokens {
-  token        String                @id @db.VarChar(64)
-  id_user      Int                   @db.UnsignedInt
-  user_type    auth_tokens_user_type
-  revoked      Int                   @default(0) @db.TinyInt
-  created_at   DateTime              @default(now()) @db.Timestamp(0)
-  last_used_at DateTime              @default(now()) @db.Timestamp(0)
-  expires_at   DateTime              @default(now()) @db.Timestamp(0)
+model tokens {
+  token        String           @id @db.VarChar(64)
+  id_user      Int              @db.UnsignedInt
+  user_type    tokens_user_type
+  revoked      Int              @default(0) @db.TinyInt
+  intent       tokens_intent    @default(auth)
+  created_at   DateTime         @default(now()) @db.Timestamp(0)
+  last_used_at DateTime         @default(now()) @db.Timestamp(0)
+  expires_at   DateTime         @default(now()) @db.Timestamp(0)
 }
 
 enum user_customer_type {
@@ -195,12 +200,24 @@ enum user_customer_type {
   g
 }
 
-enum auth_tokens_user_type {
+enum season_type {
+  l
+  h
+}
+
+enum tokens_user_type {
   c
   p
 }
 
-enum season_type {
-  l
-  h
+enum tokens_intent {
+  auth
+  verification
+  passreset
+}
+
+enum user_customer_jenis_identitas {
+  ktp
+  sim
+  paspor
 }

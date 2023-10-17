@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { UserCustomer } from './Models';
+import { User } from './Models';
 import hbs from 'handlebars'
 import fs from 'fs'
 import Utils from './Utils';
@@ -37,7 +37,7 @@ export default class Mail {
         })
     }
 
-    static async sendPasswordReset(user: UserCustomer, token: string, expires: Date) {
+    static async sendPasswordReset(user: User, token: string, expires: Date) {
         const template = Mail.getTemplate('PasswordReset')
         const html = template({
             username: user.nama,

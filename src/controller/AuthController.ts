@@ -4,7 +4,7 @@ import PrismaScope from "../modules/PrismaService";
 import bcrypt from "bcrypt";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
-import { CustomerOrPegawaiRequest, CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
+import { CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
 import { JwtUserCustomer, JwtUserPegawai } from "../modules/Models";
 import Mail from "../modules/Mail";
 
@@ -152,7 +152,7 @@ export default class AuthController {
         })
     }
 
-    static async changePassword(req: CustomerOrPegawaiRequest, res: Response) {
+    static async changePassword(req: Request, res: Response) {
         const validation = Validation.body(req, {
             new_password: {
                 required: true,
@@ -283,10 +283,34 @@ export default class AuthController {
                 }
 
             } else {
-                return ApiResponse.error(res, {
-                    message: "Belum bisa reset password pegawai: BELUM ADA 'EMAIL' DI DATABASE",
-                    errors: null
-                }, 400)
+                const user = await prisma.user_pegawai.findUnique({
+                    where: {
+                        email: username
+                    }
+                })
+
+                if (user === null) {
+                    return ApiResponse.error(res, {
+                        message: "Email tidak terdaftar",
+                        errors: null
+                    }, 400)
+                }
+
+                // Send email
+                const token = await Authentication.generateTokenP(user, 'passreset')
+                const decodedToken = Authentication.decodeToken<JwtUserPegawai>(token)
+                try {
+                    await Mail.sendPasswordReset(user, token, new Date(decodedToken!!.exp!! * 1000))
+                    return ApiResponse.success(res, {
+                        message: "Berhasil mengirim email reset password",
+                        data: null
+                    })
+                } catch (e) {
+                    return ApiResponse.error(res, {
+                        message: "Gagal mengirim email reset password",
+                        errors: null
+                    }, 500)
+                }
             }
         })
     }

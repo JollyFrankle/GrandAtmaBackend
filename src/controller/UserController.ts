@@ -1,9 +1,10 @@
 import { Response, Router } from "express";
-import { CustomerOrPegawaiRequest, CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
+import { CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
 import { ApiResponse } from "../modules/ApiResponses";
 import PrismaScope from "../modules/PrismaService";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
+import bcrypt from "bcrypt";
 
 export default class UserController {
     static async indexP(req: PegawaiRequest, res: Response) {
@@ -207,7 +208,13 @@ export default class UserController {
             }, 422)
         }
 
-        const { nama, nama_institusi, no_identitas, jenis_identitas, no_telp, email, alamat } = validation.validated()
+        const { nama, nama_institusi, no_identitas, jenis_identitas, no_telp, email, alamat, password } = validation.validated()
+
+        // Update password (jika diisi)
+        let hashedPassword: string | undefined = undefined
+        if (password) {
+            hashedPassword = await bcrypt.hash(password, 10)
+        }
 
         return PrismaScope(async (prisma) => {
             // Check if email already exists
@@ -241,7 +248,8 @@ export default class UserController {
                     jenis_identitas,
                     no_telp,
                     email,
-                    alamat
+                    alamat,
+                    password: hashedPassword
                 }
             })
 

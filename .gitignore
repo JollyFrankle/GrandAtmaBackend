@@ -28,3 +28,9 @@ build
 *.iml
 *.ipr
 *.iws
+
+# VScode
+GrandAtmaBackend.code-workspace
+
+# Temp folders
+temp

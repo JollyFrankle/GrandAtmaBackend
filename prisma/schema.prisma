@@ -26,16 +26,21 @@ model invoice {
 model jenis_kamar {
   id                 Int               @id @default(autoincrement()) @db.UnsignedTinyInt
   nama               String            @db.VarChar(100)
-  gambar             String            @db.VarChar(100)
+  gambar             String?           @db.VarChar(32)
+  short_desc         String            @db.Text
+  rating             Float             @db.Float
   fasilitas_unggulan String            @db.Text
   fasilitas          String            @db.Text
   rincian            String            @db.Text
   ukuran             Float             @db.Float
   kapasitas          Int               @db.TinyInt
   harga_dasar        Int               @db.UnsignedInt
+  images             images?           @relation(fields: [gambar], references: [uid], map: "jenis_kamar_ibfk_1")
   kamar              kamar[]
   reservasi_rooms    reservasi_rooms[]
   tarif              tarif[]
+
+  @@index([gambar], map: "jenis_kamar_ibfk_1")
 }
 
 model kamar {
@@ -55,11 +60,16 @@ model kamar {
 model layanan_tambahan {
   id                Int                 @id @default(autoincrement()) @db.UnsignedTinyInt
   nama              String              @db.VarChar(100)
+  short_desc        String              @db.Text
+  gambar            String?             @db.VarChar(32)
   satuan            String              @db.VarChar(10)
   tarif             Int                 @db.UnsignedInt
   created_at        DateTime            @default(now()) @db.Timestamp(0)
   updated_at        DateTime            @default(now()) @db.Timestamp(0)
+  images            images?             @relation(fields: [gambar], references: [uid], map: "layanan_tambahan_ibfk_1")
   reservasi_layanan reservasi_layanan[]
+
+  @@index([gambar], map: "gambar")
 }
 
 model reservasi {
@@ -193,6 +203,14 @@ model tokens {
   created_at   DateTime         @default(now()) @db.Timestamp(0)
   last_used_at DateTime         @default(now()) @db.Timestamp(0)
   expires_at   DateTime         @default(now()) @db.Timestamp(0)
+}
+
+model images {
+  uid              String             @id @db.VarChar(32)
+  data             Bytes              @db.MediumBlob
+  created_at       DateTime           @default(now()) @db.Timestamp(0)
+  jenis_kamar      jenis_kamar[]
+  layanan_tambahan layanan_tambahan[]
 }
 
 enum user_customer_type {

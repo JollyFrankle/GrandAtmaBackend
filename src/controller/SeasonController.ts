@@ -41,7 +41,11 @@ export default class SeasonController {
                 },
                 // with 'tarif':
                 include: {
-                    tarif: true
+                    tarif: {
+                        include: {
+                            jenis_kamar: true
+                        }
+                    }
                 }
             })
 
@@ -99,13 +103,13 @@ export default class SeasonController {
             },
             tanggal_start: {
                 required: true,
-                type: 'date',
+                type: 'datetime',
                 minDate: SeasonController.getTanggalMaxInputSeason()
             },
             tanggal_end: {
                 required: true,
-                type: 'date',
-                minDate: SeasonController.getTanggalMaxInputSeason()
+                type: 'datetime',
+                minDate: 'tanggal_start'
             },
             tarif: {
                 required: true,
@@ -170,12 +174,12 @@ export default class SeasonController {
                 in: ['l', 'h']
             },
             tanggal_start: {
-                type: 'date',
+                type: 'datetime',
                 minDate: SeasonController.getTanggalMaxInputSeason()
             },
             tanggal_end: {
-                type: 'date',
-                minDate: SeasonController.getTanggalMaxInputSeason()
+                type: 'datetime',
+                minDate: 'tanggal_start'
             },
             tarif: {
                 required: true,

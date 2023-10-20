@@ -53,12 +53,12 @@ export default class Authentication {
         })
     }
 
-    private static generateAuthToken(length: number = 64) {
+    static generateAuthToken(length: number = 64) {
         return crypto.randomBytes(length).toString('hex').substring(0, length)
     }
 
     static async generateTokenC(user: UserCustomer, intent: JwtUserCustomer["intent"] = 'auth', expiresIn: string | number = '7d') {
-        const generatedToken = this.generateAuthToken()
+        const generatedToken = Authentication.generateAuthToken()
         const jtwToken = jwt.sign({
             user_type: 'c',
             id: user.id,
@@ -70,7 +70,7 @@ export default class Authentication {
             expiresIn: expiresIn
         })
 
-        const fullToken = this.decodeToken(jtwToken)
+        const fullToken = Authentication.decodeToken(jtwToken)
 
         await PrismaScope(async (prisma) => {
             await prisma.tokens.create({
@@ -89,7 +89,7 @@ export default class Authentication {
     }
 
     static async generateTokenP(user: UserPegawai, intent: JwtUserCustomer["intent"] = 'auth', expiresIn: string | number = '7d') {
-        const generatedToken = this.generateAuthToken()
+        const generatedToken = Authentication.generateAuthToken()
         const jtwToken = jwt.sign({
             user_type: 'p',
             id: user.id,
@@ -100,7 +100,7 @@ export default class Authentication {
             expiresIn: expiresIn
         })
 
-        const fullToken = this.decodeToken(jtwToken)
+        const fullToken = Authentication.decodeToken(jtwToken)
 
         await PrismaScope(async (prisma) => {
             await prisma.tokens.create({

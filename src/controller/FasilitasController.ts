@@ -39,6 +39,10 @@ export default class FasilitasController {
                 required: true,
                 type: "number",
                 min: 0
+            },
+            short_desc: {
+                required: true,
+                maxLength: 254
             }
         })
 
@@ -49,14 +53,16 @@ export default class FasilitasController {
             }, 422)
         }
 
-        const { nama, satuan, tarif } = validation.validated()
+        const { nama, satuan, tarif, short_desc } = validation.validated()
 
         return PrismaScope(async (prisma) => {
             const fasilitas = await prisma.layanan_tambahan.create({
                 data: {
                     nama: nama,
                     satuan: satuan,
-                    tarif: tarif
+                    tarif: tarif,
+                    gambar: "",
+                    short_desc: short_desc
                 }
             })
 
@@ -115,6 +121,10 @@ export default class FasilitasController {
                 required: true,
                 type: "number",
                 min: 0
+            },
+            short_desc: {
+                required: true,
+                maxLength: 254
             }
         })
 
@@ -125,7 +135,7 @@ export default class FasilitasController {
             }, 422)
         }
 
-        const { nama, satuan, tarif } = validation.validated()
+        const { nama, satuan, tarif, short_desc } = validation.validated()
 
         return PrismaScope(async (prisma) => {
             const fasilitas = await prisma.layanan_tambahan.update({
@@ -135,7 +145,8 @@ export default class FasilitasController {
                 data: {
                     nama: nama,
                     satuan: satuan,
-                    tarif: tarif
+                    tarif: tarif,
+                    short_desc: short_desc
                 }
             })
 

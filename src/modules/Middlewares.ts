@@ -107,6 +107,7 @@ export default class Middlewares {
         res.setHeader("Access-Control-Allow-Origin", "*")
         res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
         res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        res.setHeader("Content-Type", "application/json")
         console.log(new Date(), req.method, req.url)
         next()
     }

@@ -14,9 +14,9 @@ export default class UserController {
 
         return PrismaScope(async (prisma) => {
             const users = await prisma.user_customer.findMany({
-                where: {
-                    type: 'g'
-                }
+                // where: {
+                //     type: 'g'
+                // }
             })
 
             return ApiResponse.success(res, {

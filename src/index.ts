@@ -7,6 +7,7 @@ import { router as SeasonRouter } from "./controller/SeasonController";
 import { router as FasilitasRouter } from "./controller/FasilitasController";
 import { routerC as UserRouterC, routerP as UserRouterP } from "./controller/UserController";
 import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./controller/ReservasiController";
+import { router as PDRouter } from "./controller/PublicDataController";
 
 const app = express();
 
@@ -19,6 +20,10 @@ app.use(Middlewares.cors)
 app.use("/customer", Middlewares.customer)
 app.use("/pegawai", Middlewares.pegawai)
 
+// Public routes
+app.use("/public", PDRouter)
+
+// Authentication
 app.post("/login", AuthController.login)
 app.post("/register", AuthController.register)
 app.post("/change-password", AuthController.changePassword)

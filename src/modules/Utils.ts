@@ -21,4 +21,12 @@ export default class Utils {
         currency: 'IDR',
         maximumFractionDigits: 2
     })
+
+    static parseJsonElseNull(json: string): any {
+        try {
+            return JSON.parse(json)
+        } catch (e) {
+            return null
+        }
+    }
 }

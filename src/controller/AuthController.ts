@@ -5,16 +5,39 @@ import bcrypt from "bcrypt";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
 import { CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
-import { JwtUserCustomer, JwtUserPegawai } from "../modules/Models";
+import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from "../modules/Models";
 import Mail from "../modules/Mail";
+import axios from "axios";
 
 export default class AuthController {
+    private static async validateRecaptcha(token: string, ip?: string): Promise<boolean> {
+        const GRE_SECRET = process.env.GRE_SECRET
+        console.log(GRE_SECRET)
+        if (GRE_SECRET === undefined) {
+            return false
+        }
+
+        return axios.post(`https://www.google.com/recaptcha/api/siteverify?${new URLSearchParams({
+            secret: GRE_SECRET,
+            response: token,
+            remoteip: ip || ''
+        })}`).then(res => {
+            console.log(res.data)
+            return res.data.success
+        }).catch(_ => {
+            return false
+        })
+    }
+
     static async login(req: Request, res: Response) {
         const validation = Validation.body(req, {
             username: {
                 required: true
             },
             password: {
+                required: true
+            },
+            recaptcha_token: {
                 required: true
             }
         })
@@ -23,6 +46,16 @@ export default class AuthController {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
                 errors: validation.errors
+            }, 422)
+        }
+
+        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        if (!recaptchaValid) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: {
+                    recaptcha_token: "Recaptcha tidak valid"
+                }
             }, 422)
         }
 
@@ -98,6 +131,9 @@ export default class AuthController {
                 required: true,
                 minLength: 3,
                 maxLength: 20
+            },
+            recaptcha_token: {
+                required: true
             }
         })
 
@@ -106,6 +142,16 @@ export default class AuthController {
                 message: "Validasi gagal",
                 errors: validation.errors
             }, 400)
+        }
+
+        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        if (!recaptchaValid) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: {
+                    recaptcha_token: "Recaptcha tidak valid"
+                }
+            }, 422)
         }
 
         const { email, password, nama, no_telp, alamat, no_identitas, jenis_identitas } = validation.validated();

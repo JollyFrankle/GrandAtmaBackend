@@ -85,7 +85,8 @@ export default class ReservasiController {
                             layanan_tambahan: true
                         }
                     },
-                    user_pegawai: true
+                    user_pegawai: true,
+                    invoice: true
                 }
             })
 
@@ -129,8 +130,7 @@ export default class ReservasiController {
                     id_customer: user.id
                 },
                 include: {
-                    user_customer: true,
-                    user_pegawai: true
+                    invoice: true
                 }
             })
 
@@ -165,7 +165,7 @@ export default class ReservasiController {
                             layanan_tambahan: true
                         }
                     },
-                    user_pegawai: true
+                    invoice: true
                 }
             })
 

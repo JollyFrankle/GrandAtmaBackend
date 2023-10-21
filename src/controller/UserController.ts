@@ -5,6 +5,7 @@ import PrismaScope from "../modules/PrismaService";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
 import bcrypt from "bcrypt";
+import { UserCustomer } from "../modules/Models";
 
 export default class UserController {
     static async indexP(req: PegawaiRequest, res: Response) {
@@ -16,12 +17,18 @@ export default class UserController {
             const users = await prisma.user_customer.findMany({
                 // where: {
                 //     type: 'g'
-                // }
+                // },
+            })
+
+            const usersWithoutPassword = users.map(user => {
+                // @ts-ignore
+                delete user.password
+                return user
             })
 
             return ApiResponse.success(res, {
                 message: 'Berhasil mengambil data',
-                data: users
+                data: usersWithoutPassword
             })
         })
     }
@@ -154,6 +161,13 @@ export default class UserController {
                     type: 'p'
                 }
             })
+
+            if (!latestUser) {
+                return ApiResponse.error(res, {
+                    message: 'Data tidak ditemukan',
+                    errors: null
+                }, 404)
+            }
 
             return ApiResponse.success(res, {
                 message: 'Berhasil mengambil data',

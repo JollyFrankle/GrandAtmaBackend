@@ -1,5 +1,6 @@
 import express from "express";
 import multer from "multer";
+import cors from "cors";
 import Middlewares from "./modules/Middlewares";
 import AuthController from "./controller/AuthController";
 import { router as KamarRouter } from "./controller/KamarController";
@@ -14,9 +15,10 @@ const app = express();
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(multer().any())
+app.use(cors())
 
 // Middleware
-app.use(Middlewares.cors)
+app.use(Middlewares.recipient)
 app.use("/customer", Middlewares.customer)
 app.use("/pegawai", Middlewares.pegawai)
 

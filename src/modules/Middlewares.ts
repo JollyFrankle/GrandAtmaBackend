@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import Authentication from "./Authentication";
 import { ApiResponse } from "./ApiResponses";
 import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from "./Models";
-import PrismaScope from "./PrismaService";
 
 export interface CustomerOrPegawaiRequest extends Request {
     data?: {
@@ -103,10 +102,7 @@ export default class Middlewares {
         }, 500)
     }
 
-    static async cors(req: Request, res: Response, next: NextFunction) {
-        res.setHeader("Access-Control-Allow-Origin", "*")
-        res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    static async recipient(req: Request, res: Response, next: NextFunction) {
         res.setHeader("Content-Type", "application/json")
         console.log(new Date(), req.method, req.url)
         next()

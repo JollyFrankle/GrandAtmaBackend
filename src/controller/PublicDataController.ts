@@ -44,9 +44,6 @@ export default class PublicDataController {
                 }, 404)
             }
 
-            jenisKamar.fasilitas_unggulan = Utils.parseJsonElseNull(jenisKamar.fasilitas_unggulan)
-            jenisKamar.fasilitas = Utils.parseJsonElseNull(jenisKamar.fasilitas)
-            jenisKamar.rincian = Utils.parseJsonElseNull(jenisKamar.rincian)
             jenisKamar.harga_dasar = 0 // hide from public
 
             return ApiResponse.success(res, {
@@ -128,6 +125,9 @@ export default class PublicDataController {
                 }, 404)
             }
 
+            // Caching
+            res.set('Cache-Control', 'public, max-age=31557600');
+            res.set('Expires', new Date(Date.now() + 31557600).toUTCString());
             return res.type("image/jpeg").send(image.data)
         })
     }

@@ -38,7 +38,7 @@ export default class UserController {
             return Authentication.defaultUnauthorizedResponse(res)
         }
 
-        const validation = Validation.body(req.body, {
+        const validation = Validation.body(req, {
             nama: {
                 required: true,
                 maxLength: 100
@@ -70,7 +70,7 @@ export default class UserController {
             }
         })
 
-        if (validation.errors) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: 'Validasi gagal',
                 errors: validation.errors
@@ -179,12 +179,8 @@ export default class UserController {
     static async updateC(req: CustomerRequest, res: Response) {
         const user = req.data!!.user
 
-        const validation = Validation.body(req.body, {
+        const validation = Validation.body(req, {
             nama: {
-                required: true,
-                maxLength: 100
-            },
-            nama_institusi: {
                 required: true,
                 maxLength: 100
             },
@@ -215,7 +211,7 @@ export default class UserController {
             }
         })
 
-        if (validation.errors) {
+        if (validation.fails()) {
             return ApiResponse.error(res, {
                 message: 'Validasi gagal',
                 errors: validation.errors

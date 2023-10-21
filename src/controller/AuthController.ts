@@ -115,8 +115,7 @@ export default class AuthController {
             no_telp: {
                 required: true,
                 minLength: 8,
-                maxLength: 15,
-                type: "number"
+                maxLength: 15
             },
             alamat: {
                 required: true,
@@ -155,9 +154,26 @@ export default class AuthController {
         }
 
         const { email, password, nama, no_telp, alamat, no_identitas, jenis_identitas } = validation.validated();
-        const hashedPassword = await bcrypt.hash(password, 10);
 
         return PrismaScope(async (prisma) => {
+            // Check email taken
+            const emailExists = await prisma.user_customer.findFirst({
+                where: {
+                    type: 'p',
+                    email: email
+                }
+            })
+
+            if (emailExists) {
+                return ApiResponse.error(res, {
+                    message: 'Email sudah digunakan',
+                    errors: {
+                        email: 'Email sudah digunakan'
+                    }
+                }, 422)
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 10);
             const userCustomer = await prisma.user_customer.create({
                 data: {
                     type: 'p',
@@ -172,7 +188,7 @@ export default class AuthController {
             })
 
             return ApiResponse.success(res, {
-                message: "Berhasil mendaftar",
+                message: "Berhasil mendaftar. Silakan cek email Anda untuk memverifikasi akun.",
                 data: userCustomer
             }, 201)
         })

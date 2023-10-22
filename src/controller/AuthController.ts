@@ -12,7 +12,6 @@ import axios from "axios";
 export default class AuthController {
     private static async validateRecaptcha(token: string, ip?: string): Promise<boolean> {
         const GRE_SECRET = process.env.GRE_SECRET
-        console.log(GRE_SECRET)
         if (GRE_SECRET === undefined) {
             return false
         }
@@ -22,7 +21,9 @@ export default class AuthController {
             response: token,
             remoteip: ip || ''
         })}`).then(res => {
-            console.log(res.data)
+            if (!res.data.success) {
+                console.log(new Date(), "GRE", res.data)
+            }
             return res.data.success
         }).catch(_ => {
             return false
@@ -140,7 +141,7 @@ export default class AuthController {
             return ApiResponse.error(res, {
                 message: "Validasi gagal",
                 errors: validation.errors
-            }, 400)
+            }, 422)
         }
 
         const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
@@ -187,10 +188,21 @@ export default class AuthController {
                 }
             })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendaftar. Silakan cek email Anda untuk memverifikasi akun.",
-                data: userCustomer
-            }, 201)
+            // Send email
+            const token = await Authentication.generateTokenC(userCustomer, 'verification')
+            const decodedToken = Authentication.decodeToken<JwtUserCustomer>(token)
+            try {
+                await Mail.sendUserActivation(userCustomer, token, new Date(decodedToken!!.exp!! * 1000))
+                return ApiResponse.success(res, {
+                    message: "Berhasil mendaftar. Silakan cek email Anda untuk memverifikasi akun.",
+                    data: userCustomer
+                }, 201)
+            } catch (e) {
+                return ApiResponse.error(res, {
+                    message: "Gagal mengirim email verifikasi password. Silakan hubungi Admin untuk memverifikasi email Anda.",
+                    errors: null
+                }, 500)
+            }
         })
     }
 
@@ -214,12 +226,8 @@ export default class AuthController {
         })
     }
 
-    static async changePassword(req: Request, res: Response) {
+    static async confirmEmail(req: Request, res: Response) {
         const validation = Validation.body(req, {
-            new_password: {
-                required: true,
-                minLength: 8
-            },
             token: {
                 required: true
             }
@@ -232,7 +240,82 @@ export default class AuthController {
             }, 422)
         }
 
-        const { new_password, token } = validation.validated();
+        const { token } = validation.validated();
+
+        // check token
+        const decodedToken = Authentication.decodeToken<JwtUserCustomer>(token)
+        if (decodedToken === null) {
+            return ApiResponse.error(res, {
+                message: "Token tidak valid",
+                errors: null
+            }, 400)
+        }
+
+        // get user
+        const user = await Authentication.getUserFromToken(decodedToken, 'verification')
+        if (user === null) {
+            return ApiResponse.error(res, {
+                message: "Token tidak valid",
+                errors: null
+            }, 400)
+        }
+
+        // update user
+        return await PrismaScope(async (prisma) => {
+            await prisma.user_customer.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    verified_at: new Date()
+                }
+            })
+
+            // Delete all token
+            await prisma.tokens.deleteMany({
+                where: {
+                    id_user: user.id,
+                    intent: 'verification'
+                }
+            })
+
+            return ApiResponse.success(res, {
+                message: "Berhasil memverifikasi email",
+                data: null
+            })
+        })
+    }
+
+    static async changePassword(req: Request, res: Response) {
+        const { token } = req.params
+        const validation = Validation.body(req, {
+            password: {
+                required: true,
+                minLength: 8
+            },
+            recaptcha_token: {
+                required: true
+            }
+        })
+
+        if (validation.fails()) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: validation.errors
+            }, 422)
+        }
+
+        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        if (!recaptchaValid) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: {
+                    recaptcha_token: "Recaptcha tidak valid"
+                }
+            }, 422)
+        }
+
+        const { password } = validation.validated();
 
         // check token
         const decodedToken = Authentication.decodeToken<JwtUserCustomer|JwtUserPegawai>(token)
@@ -252,8 +335,8 @@ export default class AuthController {
             }, 400)
         }
 
-        const hashedPassword = await bcrypt.hash(new_password, 10);
-        await PrismaScope(async (prisma) => {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        return await PrismaScope(async (prisma) => {
             if (decodedToken.user_type === 'c') {
                 await prisma.user_customer.update({
                     where: {
@@ -281,23 +364,26 @@ export default class AuthController {
                     intent: 'passreset'
                 }
             })
-        })
 
-        return ApiResponse.success(res, {
-            message: "Berhasil mengubah password",
-            data: null
+            return ApiResponse.success(res, {
+                message: "Berhasil mengubah password",
+                data: null
+            })
         })
     }
 
     static async resetPassword(req: Request, res: Response) {
         const validation = Validation.body(req, {
-            username: {
+            email: {
                 required: true,
                 type: "email"
             },
             type: {
                 required: true,
                 in: ['c', 'p']
+            },
+            recaptcha_token: {
+                required: true
             }
         })
 
@@ -308,7 +394,17 @@ export default class AuthController {
             }, 422)
         }
 
-        const { username, type } = validation.validated();
+        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        if (!recaptchaValid) {
+            return ApiResponse.error(res, {
+                message: "Recaptcha tidak valid",
+                errors: {
+                    recaptcha_token: "Recaptcha tidak valid"
+                }
+            }, 422)
+        }
+
+        const { email, type } = validation.validated();
 
         return await PrismaScope(async (prisma) => {
             if (type === 'c') {
@@ -316,7 +412,7 @@ export default class AuthController {
                     where: {
                         type_email: {
                             type: 'p',
-                            email: username
+                            email: email
                         }
                     }
                 })
@@ -324,7 +420,9 @@ export default class AuthController {
                 if (user === null) {
                     return ApiResponse.error(res, {
                         message: "Email tidak terdaftar",
-                        errors: null
+                        errors: {
+                            email: "Email tidak terdaftar"
+                        }
                     }, 400)
                 }
 
@@ -347,14 +445,16 @@ export default class AuthController {
             } else {
                 const user = await prisma.user_pegawai.findUnique({
                     where: {
-                        email: username
+                        email: email
                     }
                 })
 
                 if (user === null) {
                     return ApiResponse.error(res, {
                         message: "Email tidak terdaftar",
-                        errors: null
+                        errors: {
+                            email: "Email tidak terdaftar"
+                        }
                     }, 400)
                 }
 

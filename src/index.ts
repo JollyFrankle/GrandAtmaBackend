@@ -28,8 +28,9 @@ app.use("/public", PDRouter)
 // Authentication
 app.post("/login", AuthController.login)
 app.post("/register", AuthController.register)
-app.post("/change-password", AuthController.changePassword)
+app.post("/confirm-email", AuthController.confirmEmail)
 app.post("/reset-password", AuthController.resetPassword)
+app.patch("/reset-password/:token", AuthController.changePassword)
 
 // Customer Middleware
 app.post("/customer/logout", AuthController.logoutCustomer)

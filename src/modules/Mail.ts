@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { User } from './Models';
+import { User, UserCustomer } from './Models';
 import hbs from 'handlebars'
 import fs from 'fs'
 import Utils from './Utils';
@@ -41,11 +41,23 @@ export default class Mail {
         const template = Mail.getTemplate('PasswordReset')
         const html = template({
             username: user.nama,
-            resetLink: `${process.env.FRONTEND_URL}/reset-password?${new URLSearchParams({ token: token })}`,
+            resetLink: `${process.env.FRONTEND_URL}/change-password?${new URLSearchParams({ token: token })}`,
             expirationTime: Utils.dateFormatFull.format(expires),
             appName: 'Grand Atma Hotel'
         })
 
         return Mail.send([user.email], 'Atur Ulang Kata Sandi - TODO: change html content', html)
+    }
+
+    static async sendUserActivation(user: UserCustomer, token: string, expires: Date) {
+        const template = Mail.getTemplate('RegistrationConfirmation')
+        const html = template({
+            name: user.nama,
+            activationLink: `${process.env.FRONTEND_URL}/verification?${new URLSearchParams({ token: token })}`,
+            expirationTime: Utils.dateFormatFull.format(expires),
+            appName: 'Grand Atma Hotel'
+        })
+
+        return Mail.send([user.email], 'Konfirmasi Pendaftaran', html)
     }
 }

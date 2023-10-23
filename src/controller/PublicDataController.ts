@@ -90,7 +90,7 @@ export default class PublicDataController {
                         const image = await prisma.images.create({
                             data: {
                                 data: buffer,
-                                uid: Authentication.generateAuthToken(32)
+                                uid: Authentication.generateAuthToken()
                             }
                         })
 

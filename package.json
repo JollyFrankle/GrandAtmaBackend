@@ -2,10 +2,10 @@
   "name": "express-mvc",
   "version": "1.0.0",
   "description": "Express Typescript MVC Pattern for P3L",
-  "main": "src/index.ts",
+  "main": "index.ts",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "start-env": "ts-node -r dotenv/config src/index.ts"
+    "start": "ts-node index.ts",
+    "start-env": "ts-node -r dotenv/config index.ts"
   },
   "author": "",
   "license": "ISC",
@@ -28,7 +28,6 @@
     "axios": "^1.5.1",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
     "dotenv": "^16.3.1",
     "handlebars": "^4.7.8",
     "jimp": "^0.22.10",

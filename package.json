@@ -4,7 +4,6 @@
   "description": "Express Typescript MVC Pattern for P3L",
   "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "ts-node src/index.ts",
     "start-env": "ts-node -r dotenv/config src/index.ts"
   },

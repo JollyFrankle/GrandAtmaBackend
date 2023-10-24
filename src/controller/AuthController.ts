@@ -343,7 +343,8 @@ export default class AuthController {
                         id: user.id
                     },
                     data: {
-                        password: hashedPassword
+                        password: hashedPassword,
+                        password_last_changed: new Date()
                     }
                 })
             } else {

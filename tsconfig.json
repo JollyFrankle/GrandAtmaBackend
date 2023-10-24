@@ -1,16 +1,20 @@
 {
     "compilerOptions": {
+        "noEmit": false,
         "target": "es6",
         "module": "commonjs",
         "outDir": "./dist",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "baseUrl": "./src",
+        "rootDir": "src",
     },
     "include": [
-        "src/**/*.ts"
-, "index.ts"    ],
+        "src/**/*.ts",
+        "**/*"
+    ],
     "exclude": [
         "node_modules"
     ]

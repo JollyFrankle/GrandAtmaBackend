@@ -1,14 +1,14 @@
 import express from "express";
 import multer from "multer";
 import cors from "cors";
-import Middlewares from "./src/modules/Middlewares";
-import AuthController from "./src/controller/AuthController";
-import { router as KamarRouter } from "./src/controller/KamarController";
-import { router as SeasonRouter } from "./src/controller/SeasonController";
-import { router as FasilitasRouter } from "./src/controller/FasilitasController";
-import { routerC as UserRouterC, routerP as UserRouterP } from "./src/controller/UserController";
-import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./src/controller/ReservasiController";
-import { router as PDRouter } from "./src/controller/PublicDataController";
+import Middlewares from "./modules/Middlewares";
+import AuthController from "./controller/AuthController";
+import { router as KamarRouter } from "./controller/KamarController";
+import { router as SeasonRouter } from "./controller/SeasonController";
+import { router as FasilitasRouter } from "./controller/FasilitasController";
+import { routerC as UserRouterC, routerP as UserRouterP } from "./controller/UserController";
+import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./controller/ReservasiController";
+import { router as PDRouter } from "./controller/PublicDataController";
 
 const app = express();
 

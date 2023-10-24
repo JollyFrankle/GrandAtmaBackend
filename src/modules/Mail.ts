@@ -46,7 +46,7 @@ export default class Mail {
             appName: 'Grand Atma Hotel'
         })
 
-        return Mail.send([user.email], 'Atur Ulang Kata Sandi - TODO: change html content', html)
+        return Mail.send([user.email], 'Atur Ulang Kata Sandi', html)
     }
 
     static async sendUserActivation(user: UserCustomer, token: string, expires: Date) {

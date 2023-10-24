@@ -164,20 +164,21 @@ model tarif {
 }
 
 model user_customer {
-  id              Int                           @id @default(autoincrement()) @db.UnsignedInt
-  type            user_customer_type
-  nama            String                        @db.VarChar(100)
-  nama_institusi  String?                       @db.VarChar(100)
-  no_identitas    String                        @db.VarChar(50)
-  jenis_identitas user_customer_jenis_identitas
-  no_telp         String                        @db.VarChar(20)
-  email           String                        @db.VarChar(100)
-  password        String?                       @db.VarChar(100)
-  alamat          String                        @db.Text
-  verified_at     DateTime?                     @db.Timestamp(0)
-  created_at      DateTime                      @default(now()) @db.Timestamp(0)
-  updated_at      DateTime                      @default(now()) @db.Timestamp(0)
-  reservasi       reservasi[]
+  id                    Int                           @id @default(autoincrement()) @db.UnsignedInt
+  type                  user_customer_type
+  nama                  String                        @db.VarChar(100)
+  nama_institusi        String?                       @db.VarChar(100)
+  no_identitas          String                        @db.VarChar(50)
+  jenis_identitas       user_customer_jenis_identitas
+  no_telp               String                        @db.VarChar(20)
+  email                 String                        @db.VarChar(100)
+  password              String?                       @db.VarChar(100)
+  alamat                String                        @db.Text
+  verified_at           DateTime?                     @db.Timestamp(0)
+  password_last_changed DateTime?                     @db.Timestamp(0)
+  created_at            DateTime                      @default(now()) @db.Timestamp(0)
+  updated_at            DateTime                      @default(now()) @db.Timestamp(0)
+  reservasi             reservasi[]
 
   @@unique([type, email], map: "type")
 }
@@ -206,7 +207,7 @@ model tokens {
 }
 
 model images {
-  uid              String             @id @db.VarChar(32)
+  uid              String             @id @db.VarChar(36)
   data             Bytes              @db.MediumBlob
   created_at       DateTime           @default(now()) @db.Timestamp(0)
   jenis_kamar      jenis_kamar[]

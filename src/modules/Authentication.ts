@@ -52,8 +52,8 @@ export default class Authentication {
         })
     }
 
-    static generateAuthToken() {
-        return crypto.randomUUID()
+    static generateAuthToken(length: number = 36) {
+        return bcrypt.hashSync(new Date().getTime().toString(), 10).substring(0, length)
     }
 
     static async generateTokenC(user: UserCustomer, intent: JwtUserCustomer["intent"] = 'auth', expiresIn: string | number = '7d') {

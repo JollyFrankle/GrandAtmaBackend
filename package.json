@@ -4,8 +4,9 @@
   "description": "Express Typescript MVC Pattern for P3L",
   "main": "index.ts",
   "scripts": {
-    "start": "ts-node index.ts",
-    "start-env": "ts-node -r dotenv/config index.ts"
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "start-env": "ts-node -r dotenv/config src/index.ts"
   },
   "author": "",
   "license": "ISC",

@@ -208,6 +208,10 @@ export default class UserController {
             password: {
                 required: false,
                 minLength: 8,
+            },
+            old_password: {
+                required: false,
+                minLength: 8,
             }
         })
 
@@ -218,15 +222,34 @@ export default class UserController {
             }, 422)
         }
 
-        const { nama, nama_institusi, no_identitas, jenis_identitas, no_telp, email, alamat, password } = validation.validated()
-
-        // Update password (jika diisi)
-        let hashedPassword: string | undefined = undefined
-        if (password) {
-            hashedPassword = await bcrypt.hash(password, 10)
-        }
+        const { nama, nama_institusi, no_identitas, jenis_identitas, no_telp, email, alamat, password, old_password } = validation.validated()
 
         return PrismaScope(async (prisma) => {
+            // Update password (jika diisi)
+            let hashedPassword: string | undefined = undefined
+            let passwordLastChanged: Date | undefined = undefined
+            if (password) {
+                // Check old password
+                const currentUser = await prisma.user_customer.findFirst({
+                    where: {
+                        id: user.id!!,
+                        type: 'p'
+                    }
+                })
+                const oldPasswordMatch = await bcrypt.compare(old_password, currentUser?.password || '')
+                if (!oldPasswordMatch) {
+                    return ApiResponse.error(res, {
+                        message: 'Password lama tidak cocok',
+                        errors: {
+                            old_password: 'Password lama tidak cocok'
+                        }
+                    }, 422)
+                }
+
+                hashedPassword = await bcrypt.hash(password, 10)
+                passwordLastChanged = new Date()
+            }
+
             // Check if email already exists
             const emailExists = await prisma.user_customer.findFirst({
                 where: {
@@ -259,7 +282,8 @@ export default class UserController {
                     no_telp,
                     email,
                     alamat,
-                    password: hashedPassword
+                    password: hashedPassword,
+                    password_last_changed: passwordLastChanged
                 }
             })
 

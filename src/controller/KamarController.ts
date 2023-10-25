@@ -164,10 +164,10 @@ export default class KamarController {
             const kamar = await prisma.kamar.create({
                 data: {
                     no_kamar,
-                    id_jenis_kamar,
+                    id_jenis_kamar: +id_jenis_kamar,
                     jenis_bed,
-                    no_lantai,
-                    is_smoking
+                    no_lantai: +no_lantai,
+                    is_smoking: +is_smoking
                 }
             })
 
@@ -250,8 +250,8 @@ export default class KamarController {
                 data: {
                     id_jenis_kamar,
                     jenis_bed,
-                    no_lantai,
-                    is_smoking,
+                    no_lantai: +no_lantai,
+                    is_smoking: +is_smoking,
                     updated_at: new Date()
                 }
             })

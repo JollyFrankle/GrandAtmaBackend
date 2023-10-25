@@ -60,7 +60,7 @@ export default class FasilitasController {
                 data: {
                     nama: nama,
                     satuan: satuan,
-                    tarif: tarif,
+                    tarif: +tarif,
                     gambar: null,
                     short_desc: short_desc
                 }
@@ -145,7 +145,7 @@ export default class FasilitasController {
                 data: {
                     nama: nama,
                     satuan: satuan,
-                    tarif: tarif,
+                    tarif: +tarif,
                     short_desc: short_desc,
                     updated_at: new Date()
                 }

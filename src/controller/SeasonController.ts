@@ -213,7 +213,29 @@ export default class SeasonController {
         const { nama, type, tanggal_start, tanggal_end, tarif } = bodyValidation.validated()
 
         return PrismaScope(async (prisma) => {
-            const season = await prisma.season.update({
+            // check if season is < 2 months from now
+            const season = await prisma.season.findFirst({
+                where: {
+                    id: +id
+                }
+            })
+
+            if (season === null) {
+                return ApiResponse.error(res, {
+                    message: "Season tidak ditemukan",
+                    errors: null
+                }, 404)
+            }
+
+            // if tanggalStart < now + 2 bulan, return error
+            if (moment(season.tanggal_start).isBefore(SeasonController.getTanggalMaxInputSeason())) {
+                return ApiResponse.error(res, {
+                    message: "Season tidak dapat diubah: tanggal mulai kurang dari 2 bulan dari sekarang",
+                    errors: null
+                }, 422)
+            }
+
+            await prisma.season.update({
                 where: {
                     id: +id
                 },

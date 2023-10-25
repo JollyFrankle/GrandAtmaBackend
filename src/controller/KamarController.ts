@@ -145,6 +145,22 @@ export default class KamarController {
                 }, 422)
             }
 
+            // Check if kamar already exists
+            const kamarExists = await prisma.kamar.findUnique({
+                where: {
+                    no_kamar: no_kamar
+                }
+            })
+
+            if (kamarExists) {
+                return ApiResponse.error(res, {
+                    message: "Kamar sudah ada",
+                    errors: {
+                        no_kamar: "Kamar sudah ada"
+                    }
+                }, 422)
+            }
+
             const kamar = await prisma.kamar.create({
                 data: {
                     no_kamar,
@@ -235,7 +251,8 @@ export default class KamarController {
                     id_jenis_kamar,
                     jenis_bed,
                     no_lantai,
-                    is_smoking
+                    is_smoking,
+                    updated_at: new Date()
                 }
             })
 

@@ -39,7 +39,6 @@ export default class SeasonController {
                     },
                     type: type
                 },
-                // with 'tarif':
                 include: {
                     tarif: {
                         include: {
@@ -115,8 +114,14 @@ export default class SeasonController {
                 required: true,
                 type: "array",
                 customRule: (value) => {
-                    // tidak bisa buatkan (value: any[]) di atas
-                    return (value as Tarif[]).filter((it) => !it.id_jenis_kamar || !it.harga).length > 0 ? 'Tarif tidak lengkap!' : null
+                    const tarifs = value as Tarif[]
+
+                    // cek duplicate jenis kamar
+                    const idJenisKamarList = tarifs.map((it) => it.id_jenis_kamar)
+                    if (idJenisKamarList.length !== new Set(idJenisKamarList).size) {
+                        return 'Terdapat jenis kamar yang sama!'
+                    }
+                    return tarifs.filter((it) => !it.id_jenis_kamar || !it.harga).length > 0 ? 'Tarif tidak lengkap!' : null
                 }
             }
         })
@@ -136,15 +141,16 @@ export default class SeasonController {
                     nama: nama,
                     type: type,
                     tanggal_start: tanggal_start,
-                    tanggal_end: tanggal_end
+                    tanggal_end: tanggal_end,
+                    updated_at: new Date()
                 }
             })
 
             const tarifList = (tarif as Tarif[]).map((item) => {
                 return {
                     id_season: season.id,
-                    id_jenis_kamar: item.id_jenis_kamar,
-                    harga: item.harga
+                    id_jenis_kamar: +item.id_jenis_kamar,
+                    harga: +item.harga
                 }
             })
 
@@ -185,8 +191,14 @@ export default class SeasonController {
                 required: true,
                 type: "array",
                 customRule: (value) => {
-                    // tidak bisa buatkan (value: any[]) di atas
-                    return (value as Tarif[]).filter((it) => !it.id_jenis_kamar || !it.harga).length > 0 ? 'Tarif tidak lengkap!' : null
+                    const tarifs = value as Tarif[]
+
+                    // cek duplicate jenis kamar
+                    const idJenisKamarList = tarifs.map((it) => it.id_jenis_kamar)
+                    if (idJenisKamarList.length !== new Set(idJenisKamarList).size) {
+                        return 'Terdapat jenis kamar yang sama!'
+                    }
+                    return tarifs.filter((it) => !it.id_jenis_kamar || !it.harga).length > 0 ? 'Tarif tidak lengkap!' : null
                 }
             }
         })
@@ -215,12 +227,22 @@ export default class SeasonController {
 
             (tarif as Tarif[]).map(async (item) => {
                 item.id_season = season.id
-                await prisma.tarif.update({
-                    data: item,
-                    where: {
-                        id: item.id
-                    }
-                })
+                item.harga = +item.harga
+                item.id_jenis_kamar = +item.id_jenis_kamar
+                item.id_season = +id
+                if (item.id) {
+                    await prisma.tarif.update({
+                        data: item,
+                        where: {
+                            id: item.id
+                        }
+                    })
+                } else {
+                    item.id = undefined
+                    await prisma.tarif.create({
+                        data: item
+                    })
+                }
             })
 
             return ApiResponse.success(res, {

@@ -114,6 +114,8 @@ export default class Validation {
                     case "array":
                         if (!Array.isArray(value)) {
                             this.errors[key] = `${humanReadableKey} harus berupa array`;
+                        } else if (rule.required && value.length === 0) {
+                            this.errors[key] = `${humanReadableKey} wajib diisi`;
                         }
                         break;
                 }

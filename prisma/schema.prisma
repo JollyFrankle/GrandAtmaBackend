@@ -33,6 +33,7 @@ model jenis_kamar {
   fasilitas          String            @db.Text
   rincian            String            @db.Text
   ukuran             Float             @db.Float
+  tipe_bed           String            @db.TinyText
   kapasitas          Int               @db.TinyInt
   harga_dasar        Int               @db.UnsignedInt
   images             images?           @relation(fields: [gambar], references: [uid], map: "jenis_kamar_ibfk_1")

@@ -48,6 +48,9 @@ export default class KamarController {
                     id_jenis_kamar: jenis_kamar,
                     jenis_bed: jenis_bed,
                     no_lantai: no_lantai
+                },
+                include: {
+                    jenis_kamar: true
                 }
             })
 
@@ -69,6 +72,9 @@ export default class KamarController {
             const kamar = await prisma.kamar.findUnique({
                 where: {
                     no_kamar: no_kamar
+                },
+                include: {
+                    jenis_kamar: true
                 }
             })
 
@@ -96,7 +102,8 @@ export default class KamarController {
                 required: true
             },
             id_jenis_kamar: {
-                required: true
+                required: true,
+                type: 'number'
             },
             jenis_bed: {
                 required: true
@@ -119,6 +126,25 @@ export default class KamarController {
         const { no_kamar, id_jenis_kamar, jenis_bed, no_lantai, is_smoking } = validation.validated()
 
         return PrismaScope(async (prisma) => {
+            const allowedBedTypes = await prisma.jenis_kamar.findFirst({
+                where: {
+                    id: id_jenis_kamar
+                },
+                select: {
+                    tipe_bed: true
+                }
+            })
+
+            const tipeBed = JSON.parse(allowedBedTypes?.tipe_bed || '[]')
+            if (!tipeBed.includes(jenis_bed)) {
+                return ApiResponse.error(res, {
+                    message: "Jenis bed tidak tersedia untuk jenis kamar ini",
+                    errors: {
+                        jenis_bed: "Jenis bed tidak tersedia untuk jenis kamar ini"
+                    }
+                }, 422)
+            }
+
             const kamar = await prisma.kamar.create({
                 data: {
                     no_kamar,
@@ -158,7 +184,8 @@ export default class KamarController {
 
         const validation = Validation.body(req, {
             id_jenis_kamar: {
-                required: true
+                required: true,
+                type: 'number'
             },
             jenis_bed: {
                 required: true
@@ -181,6 +208,25 @@ export default class KamarController {
         const { id_jenis_kamar, jenis_bed, no_lantai, is_smoking } = validation.validated()
 
         return PrismaScope(async (prisma) => {
+            const allowedBedTypes = await prisma.jenis_kamar.findFirst({
+                where: {
+                    id: id_jenis_kamar
+                },
+                select: {
+                    tipe_bed: true
+                }
+            })
+
+            const tipeBed = JSON.parse(allowedBedTypes?.tipe_bed || '[]')
+            if (!tipeBed.includes(jenis_bed)) {
+                return ApiResponse.error(res, {
+                    message: "Jenis bed tidak tersedia untuk jenis kamar ini",
+                    errors: {
+                        jenis_bed: "Jenis bed tidak tersedia untuk jenis kamar ini"
+                    }
+                }, 422)
+            }
+
             const kamar = await prisma.kamar.update({
                 where: {
                     no_kamar: no_kamar
@@ -220,11 +266,23 @@ export default class KamarController {
             })
         })
     }
+
+    static async getAllJenisKamar(_: PegawaiRequest, res: Response) {
+        return PrismaScope(async (prisma) => {
+            const jenisKamarList = await prisma.jenis_kamar.findMany()
+
+            return ApiResponse.success(res, {
+                message: "Berhasil mendapatkan data jenis kamar",
+                data: jenisKamarList
+            })
+        })
+    }
 }
 
 // Routing
 export const router = Router()
 router.get('/', KamarController.index)
+router.get('/jenis', KamarController.getAllJenisKamar)
 router.get('/:no_kamar', KamarController.show)
 router.post('/', KamarController.store)
 router.put('/:no_kamar', KamarController.update)

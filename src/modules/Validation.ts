@@ -76,7 +76,7 @@ export default class Validation {
             const rule = this.rules[key];
             const humanReadableKey = getHumanReadableKey(key)
 
-            if (rule.required && !value) {
+            if (rule.required && (!value && value !== 0)) {
                 this.errors[key] = `${humanReadableKey} wajib diisi`;
             } else if (!value) {
                 // no value and not required, ignore further checks

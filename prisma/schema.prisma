@@ -88,7 +88,7 @@ model reservasi {
   jumlah_dp           Int?
   status              String              @db.VarChar(10)
   total               Int                 @db.UnsignedInt
-  deposit             Int                 @db.UnsignedInt
+  deposit             Int?                @db.UnsignedInt
   permintaan_tambahan String?             @db.Text
   bukti_transfer      String?             @db.VarChar(100)
   created_at          DateTime            @default(now()) @db.Timestamp(0)

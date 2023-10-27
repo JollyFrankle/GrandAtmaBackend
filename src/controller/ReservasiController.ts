@@ -14,7 +14,7 @@ export default class ReservasiController {
 
         const user = req.data!!.user
 
-        const { id } = req.params // id customer
+        const { idC } = req.params // id customer
 
         const validation = Validation.query(req, {
             status: {
@@ -35,7 +35,7 @@ export default class ReservasiController {
             const reservasiList = await prisma.reservasi.findMany({
                 where: {
                     status: status,
-                    id_customer: +id,
+                    id_customer: +idC,
                     user_customer: {
                         type: 'g' // hanya tampilkan kalau group request bukan individual
                     }
@@ -46,9 +46,19 @@ export default class ReservasiController {
                 }
             })
 
+            const customer = await prisma.user_customer.findUnique({
+                where: {
+                    id: +idC,
+                    type: "g"
+                }
+            })
+
             return ApiResponse.success(res, {
                 message: "Berhasil mendapatkan data reservasi",
-                data: reservasiList
+                data: {
+                    list: reservasiList,
+                    customer: customer
+                }
             })
         })
     }
@@ -66,18 +76,23 @@ export default class ReservasiController {
             }, 403)
         }
 
-        const { id } = req.params // id reservasi
+        const { idC, id } = req.params // id reservasi
 
         return PrismaScope(async (prisma) => {
             const reservasi = await prisma.reservasi.findUnique({
                 where: {
-                    id: +id
+                    id: +id,
+                    id_customer: +idC,
+                    user_customer: {
+                        type: 'g' // hanya tampilkan kalau group request bukan individual
+                    }
                 },
                 include: {
                     user_customer: true,
                     reservasi_rooms: {
                         include: {
-                            kamar: true
+                            kamar: true,
+                            jenis_kamar: true
                         }
                     },
                     reservasi_layanan: {
@@ -186,8 +201,8 @@ export default class ReservasiController {
 
 // Routing
 export const routerP = Router()
-routerP.get('/', ReservasiController.indexP)
-routerP.get('/:id', ReservasiController.showP)
+routerP.get('/:idC', ReservasiController.indexP)
+routerP.get('/:idC/:id', ReservasiController.showP)
 
 export const routerC = Router()
 routerC.get('/', ReservasiController.indexC)

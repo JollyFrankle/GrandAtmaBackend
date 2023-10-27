@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import PrismaScope from './PrismaService'
+import crypto from "crypto"
 import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from './Models'
 import { Request, Response } from 'express'
 import { PegawaiRequest } from './Middlewares'
@@ -53,7 +54,7 @@ export default class Authentication {
     }
 
     static generateAuthToken(length: number = 36) {
-        return bcrypt.hashSync(new Date().getTime().toString(), 10).substring(0, length)
+        return crypto.randomUUID().substring(0, length)
     }
 
     static async generateTokenC(user: UserCustomer, intent: JwtUserCustomer["intent"] = 'auth', expiresIn: string | number = '7d') {

@@ -26,7 +26,7 @@ model invoice {
 model jenis_kamar {
   id                 Int               @id @default(autoincrement()) @db.UnsignedTinyInt
   nama               String            @db.VarChar(100)
-  gambar             String?           @db.VarChar(32)
+  gambar             String?           @db.Char(36)
   short_desc         String            @db.Text
   rating             Float             @db.Float
   fasilitas_unggulan String            @db.Text
@@ -41,7 +41,7 @@ model jenis_kamar {
   reservasi_rooms    reservasi_rooms[]
   tarif              tarif[]
 
-  @@index([gambar], map: "jenis_kamar_ibfk_1")
+  @@index([gambar], map: "gambar")
 }
 
 model kamar {
@@ -62,7 +62,7 @@ model layanan_tambahan {
   id                Int                 @id @default(autoincrement()) @db.UnsignedTinyInt
   nama              String              @db.VarChar(100)
   short_desc        String              @db.Text
-  gambar            String?             @db.VarChar(32)
+  gambar            String?             @db.Char(36)
   satuan            String              @db.VarChar(10)
   tarif             Int                 @db.UnsignedInt
   created_at        DateTime            @default(now()) @db.Timestamp(0)
@@ -208,7 +208,7 @@ model tokens {
 }
 
 model images {
-  uid              String             @id @db.VarChar(36)
+  uid              String             @id @db.Char(36)
   data             Bytes              @db.MediumBlob
   created_at       DateTime           @default(now()) @db.Timestamp(0)
   jenis_kamar      jenis_kamar[]

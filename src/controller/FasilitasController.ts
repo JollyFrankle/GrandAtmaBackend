@@ -4,6 +4,7 @@ import { ApiResponse } from "../modules/ApiResponses";
 import PrismaScope from "../modules/PrismaService";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
+import ImageUpload, { multerUploadDest } from "../modules/ImageUpload";
 
 export default class FasilitasController {
     static async index(req: PegawaiRequest, res: Response) {
@@ -43,6 +44,10 @@ export default class FasilitasController {
             short_desc: {
                 required: true,
                 maxLength: 254
+            },
+            gambar: {
+                required: false,
+                type: "file_single"
             }
         })
 
@@ -55,13 +60,23 @@ export default class FasilitasController {
 
         const { nama, satuan, tarif, short_desc } = validation.validated()
 
+        // Upload gambar
+        const { file } = req
+        const result = await ImageUpload.handlesingleUpload("gambar", file)
+        if (!result.success) {
+            return ApiResponse.error(res, {
+                message: "Gagal mengupload gambar",
+                errors: result.errors
+            }, 422)
+        }
+
         return PrismaScope(async (prisma) => {
             const fasilitas = await prisma.layanan_tambahan.create({
                 data: {
                     nama: nama,
                     satuan: satuan,
                     tarif: +tarif,
-                    gambar: null,
+                    gambar: result.data.uid,
                     short_desc: short_desc
                 }
             })
@@ -184,6 +199,6 @@ export default class FasilitasController {
 export const router = Router()
 router.get('/', FasilitasController.index)
 router.get('/:id', FasilitasController.show)
-router.post('/', FasilitasController.store)
+router.post('/', multerUploadDest.single('gambar'), FasilitasController.store)
 router.put('/:id', FasilitasController.update)
 router.delete('/:id', FasilitasController.destroy)

@@ -118,6 +118,11 @@ export default class Validation {
                             this.errors[key] = `${humanReadableKey} wajib diisi`;
                         }
                         break;
+                    case "file_single":
+                        if (!value?.mimetype?.includes("image")) {
+                            this.errors[key] = `${humanReadableKey} harus berupa gambar`;
+                        }
+                        break;
                 }
 
                 if (!this.validatedData[key] && rule.customRule && rule.customRule!!(value) !== null) {
@@ -163,7 +168,7 @@ interface ValidationRule {
     minLength?: number;
     maxLength?: number;
     in?: any[];
-    type?: "email" | "number" | "datetime" | "timestamp" | "array";
+    type?: "email" | "number" | "datetime" | "timestamp" | "array" | "file_single";
     min?: number;
     max?: number;
     minDate?: Date | moment.Moment | string;

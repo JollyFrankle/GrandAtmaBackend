@@ -247,12 +247,14 @@ export default class SeasonController {
                 }
             });
 
+            const updatedIds: number[] = [];
             (tarif as Tarif[]).map(async (item) => {
                 item.id_season = season.id
                 item.harga = +item.harga
                 item.id_jenis_kamar = +item.id_jenis_kamar
                 item.id_season = +id
                 if (item.id) {
+                    updatedIds.push(item.id)
                     await prisma.tarif.update({
                         data: item,
                         where: {
@@ -264,6 +266,18 @@ export default class SeasonController {
                     await prisma.tarif.create({
                         data: item
                     })
+                }
+            })
+
+            // delete tarif yang tidak ada di updatedIds
+            await prisma.tarif.deleteMany({
+                where: {
+                    id_season: +id,
+                    NOT: {
+                        id: {
+                            in: updatedIds
+                        }
+                    }
                 }
             })
 

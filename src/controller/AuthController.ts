@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
 import { CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
-import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from "../modules/Models";
+import { JwtUserCustomer, JwtUserPegawai } from "../modules/Models";
 import Mail from "../modules/Mail";
 import axios from "axios";
 
@@ -30,15 +30,26 @@ export default class AuthController {
         })
     }
 
+    static async askForRecaptchaIfNotMobile(req: Request) {
+        const packageName = req.headers['x-package-name'] || ''
+        if (packageName === "com.example.grandatmahotel") {
+            return true
+        }
+
+        const recaptcha_token = req.body.recaptcha_token
+        if (recaptcha_token === undefined) {
+            return false
+        }
+
+        return AuthController.validateRecaptcha(recaptcha_token, req.ip)
+    }
+
     static async login(req: Request, res: Response) {
         const validation = Validation.body(req, {
             username: {
                 required: true
             },
             password: {
-                required: true
-            },
-            recaptcha_token: {
                 required: true
             }
         })
@@ -50,10 +61,10 @@ export default class AuthController {
             }, 422)
         }
 
-        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        const recaptchaValid = await AuthController.askForRecaptchaIfNotMobile(req)
         if (!recaptchaValid) {
             return ApiResponse.error(res, {
-                message: "Validasi gagal",
+                message: "Recaptcha tidak valid",
                 errors: {
                     recaptcha_token: "Recaptcha tidak valid"
                 }
@@ -80,6 +91,107 @@ export default class AuthController {
                 })
             }
         }
+
+        const userPegawai = await Authentication.attemptPegawai(username, password)
+        if (userPegawai !== null) {
+            const token = await Authentication.generateTokenP(userPegawai)
+            return ApiResponse.success(res, {
+                message: "Berhasil login sebagai pegawai",
+                data: {
+                    user: userPegawai,
+                    token: token
+                }
+            })
+        }
+
+        return ApiResponse.error(res, {
+            message: "Username atau password salah",
+            errors: null
+        }, 400)
+    }
+
+    static async loginCustomer(req: Request, res: Response) {
+        const validation = Validation.body(req, {
+            username: {
+                required: true
+            },
+            password: {
+                required: true
+            }
+        })
+
+        if (validation.fails()) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: validation.errors
+            }, 422)
+        }
+
+        const recaptchaValid = await AuthController.askForRecaptchaIfNotMobile(req)
+        if (!recaptchaValid) {
+            return ApiResponse.error(res, {
+                message: "Recaptcha tidak valid",
+                errors: {
+                    recaptcha_token: "Recaptcha tidak valid"
+                }
+            }, 422)
+        }
+
+        const { username, password } = validation.validated();
+
+        const userCustomer = await Authentication.attemptCustomer(username, password)
+        if (userCustomer !== null) {
+            if (userCustomer.verified_at === null) {
+                return ApiResponse.error(res, {
+                    message: "Akun belum diverifikasi",
+                    errors: null
+                }, 400)
+            } else {
+                const token = await Authentication.generateTokenC(userCustomer)
+                return ApiResponse.success(res, {
+                    message: "Berhasil login sebagai customer",
+                    data: {
+                        user: userCustomer,
+                        token: token
+                    }
+                })
+            }
+        }
+
+        return ApiResponse.error(res, {
+            message: "Username atau password salah",
+            errors: null
+        }, 400)
+    }
+
+    static async loginPegawai(req: Request, res: Response) {
+        const validation = Validation.body(req, {
+            username: {
+                required: true
+            },
+            password: {
+                required: true
+            }
+        })
+
+        if (validation.fails()) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: validation.errors
+            }, 422)
+        }
+
+        const recaptchaValid = await AuthController.askForRecaptchaIfNotMobile(req)
+        if (!recaptchaValid) {
+            return ApiResponse.error(res, {
+                message: "Recaptcha tidak valid",
+                errors: {
+                    recaptcha_token: "Recaptcha tidak valid"
+                }
+            }, 422)
+        }
+
+        const { username, password } = validation.validated();
 
         const userPegawai = await Authentication.attemptPegawai(username, password)
         if (userPegawai !== null) {
@@ -131,9 +243,6 @@ export default class AuthController {
                 required: true,
                 minLength: 3,
                 maxLength: 20
-            },
-            recaptcha_token: {
-                required: true
             }
         })
 
@@ -144,10 +253,10 @@ export default class AuthController {
             }, 422)
         }
 
-        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        const recaptchaValid = await AuthController.askForRecaptchaIfNotMobile(req)
         if (!recaptchaValid) {
             return ApiResponse.error(res, {
-                message: "Validasi gagal",
+                message: "Recaptcha tidak valid",
                 errors: {
                     recaptcha_token: "Recaptcha tidak valid"
                 }
@@ -292,9 +401,6 @@ export default class AuthController {
             password: {
                 required: true,
                 minLength: 8
-            },
-            recaptcha_token: {
-                required: true
             }
         })
 
@@ -305,10 +411,10 @@ export default class AuthController {
             }, 422)
         }
 
-        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        const recaptchaValid = await AuthController.askForRecaptchaIfNotMobile(req)
         if (!recaptchaValid) {
             return ApiResponse.error(res, {
-                message: "Validasi gagal",
+                message: "Recaptcha tidak valid",
                 errors: {
                     recaptcha_token: "Recaptcha tidak valid"
                 }
@@ -382,9 +488,6 @@ export default class AuthController {
             type: {
                 required: true,
                 in: ['c', 'p']
-            },
-            recaptcha_token: {
-                required: true
             }
         })
 
@@ -395,7 +498,7 @@ export default class AuthController {
             }, 422)
         }
 
-        const recaptchaValid = await AuthController.validateRecaptcha(req.body.recaptcha_token, req.ip)
+        const recaptchaValid = await AuthController.askForRecaptchaIfNotMobile(req)
         if (!recaptchaValid) {
             return ApiResponse.error(res, {
                 message: "Recaptcha tidak valid",

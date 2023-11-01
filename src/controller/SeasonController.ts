@@ -117,7 +117,7 @@ export default class SeasonController {
                     const tarifs = value as Tarif[]
 
                     // cek duplicate jenis kamar
-                    const idJenisKamarList = tarifs.map((it) => it.id_jenis_kamar)
+                    const idJenisKamarList = tarifs.map((it) => +it.id_jenis_kamar)
                     if (idJenisKamarList.length !== new Set(idJenisKamarList).size) {
                         return 'Terdapat jenis kamar yang sama!'
                     }
@@ -194,7 +194,7 @@ export default class SeasonController {
                     const tarifs = value as Tarif[]
 
                     // cek duplicate jenis kamar
-                    const idJenisKamarList = tarifs.map((it) => it.id_jenis_kamar)
+                    const idJenisKamarList = tarifs.map((it) => +it.id_jenis_kamar)
                     if (idJenisKamarList.length !== new Set(idJenisKamarList).size) {
                         return 'Terdapat jenis kamar yang sama!'
                     }

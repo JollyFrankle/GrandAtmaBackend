@@ -252,7 +252,6 @@ export default class SeasonController {
                 item.id_season = season.id
                 item.harga = +item.harga
                 item.id_jenis_kamar = +item.id_jenis_kamar
-                item.id_season = +id
                 if (item.id) {
                     updatedIds.push(item.id)
                     await prisma.tarif.update({
@@ -263,9 +262,10 @@ export default class SeasonController {
                     })
                 } else {
                     item.id = undefined
-                    await prisma.tarif.create({
+                    const tarifNew = await prisma.tarif.create({
                         data: item
                     })
+                    updatedIds.push(tarifNew.id)
                 }
             })
 

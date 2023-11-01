@@ -44,6 +44,9 @@ export default class AuthController {
         return AuthController.validateRecaptcha(recaptcha_token, req.ip)
     }
 
+    /**
+     * @deprecated Use loginCustomer or loginPegawai instead
+     */
     static async login(req: Request, res: Response) {
         const validation = Validation.body(req, {
             username: {
@@ -192,17 +195,25 @@ export default class AuthController {
         }
 
         const { username, password } = validation.validated();
+        const isMobile = (req.headers['x-package-name'] || '') === "com.example.grandatmahotel"
 
         const userPegawai = await Authentication.attemptPegawai(username, password)
         if (userPegawai !== null) {
-            const token = await Authentication.generateTokenP(userPegawai)
-            return ApiResponse.success(res, {
-                message: "Berhasil login sebagai pegawai",
-                data: {
-                    user: userPegawai,
-                    token: token
-                }
-            })
+            if (isMobile && !["owner", "gm"].includes(userPegawai.role)) {
+                return ApiResponse.error(res, {
+                    message: "Anda tidak memiliki akses",
+                    errors: null
+                }, 403)
+            } else {
+                const token = await Authentication.generateTokenP(userPegawai)
+                return ApiResponse.success(res, {
+                    message: "Berhasil login sebagai pegawai",
+                    data: {
+                        user: userPegawai,
+                        token: token
+                    }
+                })
+            }
         }
 
         return ApiResponse.error(res, {

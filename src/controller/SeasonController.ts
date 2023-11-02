@@ -155,6 +155,14 @@ export default class SeasonController {
                             tanggal_end: {
                                 gte: tanggal_end
                             }
+                        },
+                        {
+                            tanggal_start: {
+                                gte: tanggal_start
+                            },
+                            tanggal_end: {
+                                lte: tanggal_end
+                            }
                         }
                     ]
                 }
@@ -286,6 +294,14 @@ export default class SeasonController {
                             },
                             tanggal_end: {
                                 gte: tanggal_end
+                            }
+                        },
+                        {
+                            tanggal_start: {
+                                gte: tanggal_start
+                            },
+                            tanggal_end: {
+                                lte: tanggal_end
                             }
                         }
                     ]

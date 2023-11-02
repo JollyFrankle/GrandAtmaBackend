@@ -9,6 +9,7 @@ import { router as FasilitasRouter } from "./controller/FasilitasController";
 import { routerC as UserRouterC, routerP as UserRouterP } from "./controller/UserController";
 import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./controller/ReservasiController";
 import { router as PDRouter } from "./controller/PublicDataController";
+import { router as BookingRouter } from "./controller/BookingController";
 import getIP from "./modules/LocalNetwork";
 
 const app = express();
@@ -33,6 +34,7 @@ app.post("/register", AuthController.register)
 app.post("/confirm-email", AuthController.confirmEmail)
 app.post("/reset-password", AuthController.resetPassword)
 app.patch("/reset-password/:token", AuthController.changePassword)
+app.use("/booking", BookingRouter)
 
 // Customer Middleware
 app.post("/customer/logout", AuthController.logoutCustomer)

@@ -71,6 +71,20 @@ export default class FasilitasController {
         }
 
         return PrismaScope(async (prisma) => {
+            // Check for similar name
+            const similar = await prisma.layanan_tambahan.findFirst({
+                where: {
+                    nama: nama
+                }
+            })
+
+            if (similar !== null) {
+                return ApiResponse.error(res, {
+                    message: "Nama fasilitas sudah digunakan",
+                    errors: null
+                }, 422)
+            }
+
             const fasilitas = await prisma.layanan_tambahan.create({
                 data: {
                     nama: nama,
@@ -153,6 +167,23 @@ export default class FasilitasController {
         const { nama, satuan, tarif, short_desc } = validation.validated()
 
         return PrismaScope(async (prisma) => {
+            // Check for similar name
+            const similar = await prisma.layanan_tambahan.findFirst({
+                where: {
+                    nama: nama,
+                    id: {
+                        not: +id
+                    }
+                }
+            })
+
+            if (similar !== null) {
+                return ApiResponse.error(res, {
+                    message: "Nama fasilitas sudah digunakan",
+                    errors: null
+                }, 422)
+            }
+
             const fasilitas = await prisma.layanan_tambahan.update({
                 where: {
                     id: +id

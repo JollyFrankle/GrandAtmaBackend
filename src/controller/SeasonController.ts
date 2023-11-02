@@ -136,6 +136,37 @@ export default class SeasonController {
         const { nama, type, tanggal_start, tanggal_end, tarif } = validation.validated()
 
         return PrismaScope(async (prisma) => {
+            // Get overlapping season
+            const overlappingSeason = await prisma.season.findFirst({
+                where: {
+                    OR: [
+                        {
+                            tanggal_start: {
+                                lte: tanggal_start
+                            },
+                            tanggal_end: {
+                                gte: tanggal_start
+                            }
+                        },
+                        {
+                            tanggal_start: {
+                                lte: tanggal_end
+                            },
+                            tanggal_end: {
+                                gte: tanggal_end
+                            }
+                        }
+                    ]
+                }
+            })
+
+            if (overlappingSeason !== null) {
+                return ApiResponse.error(res, {
+                    message: `Season tidak dapat diubah: sudah ada season ${overlappingSeason.nama} di tanggal ini.`,
+                    errors: null
+                }, 422)
+            }
+
             const season = await prisma.season.create({
                 data: {
                     nama: nama,
@@ -213,7 +244,6 @@ export default class SeasonController {
         const { nama, type, tanggal_start, tanggal_end, tarif } = bodyValidation.validated()
 
         return PrismaScope(async (prisma) => {
-            // check if season is < 2 months from now
             const season = await prisma.season.findFirst({
                 where: {
                     id: +id
@@ -231,6 +261,40 @@ export default class SeasonController {
             if (moment(season.tanggal_start).isBefore(SeasonController.getTanggalMaxInputSeason())) {
                 return ApiResponse.error(res, {
                     message: "Season tidak dapat diubah: tanggal mulai kurang dari 2 bulan dari sekarang",
+                    errors: null
+                }, 422)
+            }
+
+            // check if there is overlapping season
+            const overlappingSeason = await prisma.season.findFirst({
+                where: {
+                    id: {
+                        not: +id
+                    },
+                    OR: [
+                        {
+                            tanggal_start: {
+                                lte: tanggal_start
+                            },
+                            tanggal_end: {
+                                gte: tanggal_start
+                            }
+                        },
+                        {
+                            tanggal_start: {
+                                lte: tanggal_end
+                            },
+                            tanggal_end: {
+                                gte: tanggal_end
+                            }
+                        }
+                    ]
+                }
+            })
+
+            if (overlappingSeason !== null) {
+                return ApiResponse.error(res, {
+                    message: `Season tidak dapat diubah: sudah ada season ${overlappingSeason.nama} di tanggal ini.`,
                     errors: null
                 }, 422)
             }

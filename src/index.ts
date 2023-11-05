@@ -9,7 +9,7 @@ import { router as FasilitasRouter } from "./controller/FasilitasController";
 import { routerC as UserRouterC, routerP as UserRouterP } from "./controller/UserController";
 import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./controller/ReservasiController";
 import { router as PDRouter } from "./controller/PublicDataController";
-import { router as BookingRouter } from "./controller/BookingController";
+import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP as BookingRouterP } from "./controller/BookingController";
 import getIP from "./modules/LocalNetwork";
 
 const app = express();
@@ -25,6 +25,7 @@ app.use("/pegawai", Middlewares.pegawai)
 
 // Public routes
 app.use("/public", PDRouter)
+app.use("/public/booking", BookingRouterPublic)
 
 // Authentication
 app.post("/login", AuthController.login)
@@ -34,12 +35,12 @@ app.post("/register", AuthController.register)
 app.post("/confirm-email", AuthController.confirmEmail)
 app.post("/reset-password", AuthController.resetPassword)
 app.patch("/reset-password/:token", AuthController.changePassword)
-app.use("/booking", BookingRouter)
 
 // Customer Middleware
 app.post("/customer/logout", AuthController.logoutCustomer)
 app.use("/customer/user", UserRouterC)
 app.use("/customer/reservasi", ReservasiRouterC)
+app.use("/customer/booking", BookingRouterC)
 
 // Pegawai Middleware
 app.post("/pegawai/logout", AuthController.logoutPegawai)
@@ -48,6 +49,7 @@ app.use("/pegawai/season", SeasonRouter)
 app.use("/pegawai/fasilitas", FasilitasRouter)
 app.use("/pegawai/user", UserRouterP)
 app.use("/pegawai/reservasi", ReservasiRouterP)
+app.use("/pegawai/booking", BookingRouterP)
 
 // Error 404
 app.use(Middlewares.notFound)

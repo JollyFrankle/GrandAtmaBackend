@@ -103,12 +103,12 @@ export default class SeasonController {
             tanggal_start: {
                 required: true,
                 type: 'datetime',
-                minDate: SeasonController.getTanggalMaxInputSeason()
+                after: SeasonController.getTanggalMaxInputSeason()
             },
             tanggal_end: {
                 required: true,
                 type: 'datetime',
-                minDate: 'tanggal_start'
+                after: 'tanggal_start'
             },
             tarif: {
                 required: true,
@@ -220,11 +220,11 @@ export default class SeasonController {
             },
             tanggal_start: {
                 type: 'datetime',
-                minDate: SeasonController.getTanggalMaxInputSeason()
+                after: SeasonController.getTanggalMaxInputSeason()
             },
             tanggal_end: {
                 type: 'datetime',
-                minDate: 'tanggal_start'
+                after: 'tanggal_start'
             },
             tarif: {
                 required: true,

@@ -79,16 +79,16 @@ model reservasi {
   id_sm               Int?                @db.UnsignedInt
   id_booking          String?             @unique(map: "id_booking") @db.VarChar(20)
   arrival_date        DateTime            @db.Date
-  departure_date      DateTime            @default(now()) @db.Date
+  departure_date      DateTime            @db.Date
   checked_in          DateTime?           @db.Timestamp(0)
   checked_out         DateTime?           @db.Timestamp(0)
-  jumlah_malam        Int                 @db.UnsignedTinyInt
+  jumlah_malam        Int?                @db.UnsignedTinyInt
   jumlah_dewasa       Int                 @default(0) @db.UnsignedTinyInt
   jumlah_anak         Int                 @default(0) @db.UnsignedTinyInt
   tanggal_dp          DateTime?           @db.Timestamp(0)
   jumlah_dp           Int?
   status              String              @db.VarChar(10)
-  total               Int                 @db.UnsignedInt
+  total               Int                 @default(0) @db.UnsignedInt
   deposit             Int?                @db.UnsignedInt
   permintaan_tambahan String?             @db.Text
   bukti_transfer      String?             @db.VarChar(100)

@@ -39,28 +39,28 @@ export default class Validation {
 
         if (!date.isValid()) {
             this.errors[key] = `${humanReadableKey} harus berupa tanggal yang valid`;
-        } else if (rule.minDate || rule.maxDate) {
-            if (rule.minDate) {
-                if (typeof rule.minDate === "string") {
+        } else if (rule.after || rule.before) {
+            if (rule.after) {
+                if (typeof rule.after === "string") {
                     // if minDate is a string, it must be a key of rules
-                    const minDate = stringToDate(this.validatedData[rule.minDate!! as string], type)
+                    const minDate = stringToDate(this.validatedData[rule.after!! as string], type)
                     if (date.isBefore(minDate)) {
-                        this.errors[key] = `${humanReadableKey} tidak boleh sebelum ${rule.minDate}`;
+                        this.errors[key] = `${humanReadableKey} tidak boleh sebelum ${rule.after}`;
                     }
-                } else if (date.isBefore(momentOrDateToDate(rule.minDate, type))) {
+                } else if (date.isBefore(momentOrDateToDate(rule.after, type))) {
                     // if date | moment
-                    this.errors[key] = `${humanReadableKey} harus paling cepat ${rule.minDate}`;
+                    this.errors[key] = `${humanReadableKey} harus paling cepat ${rule.after}`;
                 }
-            } else if (rule.maxDate) {
-                if (typeof rule.maxDate === "string") {
+            } else if (rule.before) {
+                if (typeof rule.before === "string") {
                     // if maxDate is a string, it must be a key of rules
-                    const maxDate = stringToDate(this.validatedData[rule.maxDate!! as string], type)
+                    const maxDate = stringToDate(this.validatedData[rule.before!! as string], type)
                     if (date.isAfter(maxDate)) {
-                        this.errors[key] = `${humanReadableKey} tidak boleh setelah ${rule.maxDate}`;
+                        this.errors[key] = `${humanReadableKey} tidak boleh setelah ${rule.before}`;
                     }
-                } else if (date.isAfter(momentOrDateToDate(rule.maxDate, type))) {
+                } else if (date.isAfter(momentOrDateToDate(rule.before, type))) {
                     // if date | moment
-                    this.errors[key] = `${humanReadableKey} harus paling lambat ${rule.maxDate}`;
+                    this.errors[key] = `${humanReadableKey} harus paling lambat ${rule.before}`;
                 }
             }
         }
@@ -125,8 +125,11 @@ export default class Validation {
                         break;
                 }
 
-                if (!this.validatedData[key] && rule.customRule && rule.customRule!!(value) !== null) {
-                    this.errors[key] = rule.customRule!!(value)!!
+                if (!this.validatedData[key] && rule.customRule) {
+                    const customRuleResult = rule.customRule!!(value)
+                    if (customRuleResult) {
+                        this.errors[key] = customRuleResult
+                    }
                 }
             }
 
@@ -150,6 +153,10 @@ export default class Validation {
         return this.validatedData;
     }
 
+    errorToString() {
+        return Object.values(this.errors).join("\n");
+    }
+
     static body(req: Request, rules: { [key: string]: ValidationRule }) {
         return new Validation(req.body, rules).validate();
     }
@@ -171,9 +178,9 @@ interface ValidationRule {
     type?: "email" | "number" | "datetime" | "timestamp" | "array" | "file_single";
     min?: number;
     max?: number;
-    minDate?: Date | moment.Moment | string;
-    maxDate?: Date | moment.Moment | string;
-    customRule?: (value: any) => string | null
+    after?: Date | moment.Moment | string;
+    before?: Date | moment.Moment | string;
+    customRule?: (value: any) => string | null;
 }
 
 interface KeyValue<T> {

@@ -105,7 +105,11 @@ export default class Middlewares {
     static async recipient(req: Request, res: Response, next: NextFunction) {
         res.setHeader("Content-Type", "application/json")
         console.log(new Date(), req.method, req.url)
-        next()
+        // delay 500ms
+        setTimeout(() => {
+            next()
+        }, 500)
+        // next()
     }
 
     static async notFound(_: Request, res: Response, __: NextFunction) {

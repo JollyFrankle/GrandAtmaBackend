@@ -85,6 +85,7 @@ model reservasi {
   jumlah_malam        Int?                @db.UnsignedTinyInt
   jumlah_dewasa       Int                 @default(0) @db.UnsignedTinyInt
   jumlah_anak         Int                 @default(0) @db.UnsignedTinyInt
+  tanggal_dl_booking  DateTime?           @db.Timestamp(0)
   tanggal_dp          DateTime?           @db.Timestamp(0)
   jumlah_dp           Int?
   status              String              @db.VarChar(10)

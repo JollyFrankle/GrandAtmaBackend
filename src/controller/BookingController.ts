@@ -121,6 +121,8 @@ async function getKetersediaanKamar(arrivalDate: Date, departureDate: Date, maxJ
         }
     }
 
+    // console.log(arrivalDate, departureDate, jumlahJenisKamar)
+
     jumlahJenisKamar.forEach((item) => {
         const maxTerisi = Math.max(...item.terisiPerHari, 0)
         item.kamarTersedia -= maxTerisi
@@ -168,13 +170,6 @@ async function getTarifKamar(idJK: number, arrivalDate: Date, departureDate: Dat
 }
 
 async function createBooking(customer: UserCustomer, jenisKamar: { id_jk: number, jumlah: number, harga: number }[], detail: { arrival_date: Date, departure_date: Date, jumlah_dewasa: number, jumlah_anak: number }, petugasSM?: UserPegawai) {
-    let customerType: "P" | "G"
-    if (petugasSM) {
-        customerType = "G"
-    } else {
-        customerType = "P"
-    }
-
     // Insert into 'reservasi'
     const reservasi = await prisma.reservasi.create({
         data: {
@@ -198,16 +193,16 @@ async function createBooking(customer: UserCustomer, jenisKamar: { id_jk: number
     await Promise.all(jenisKamar.map(async (item) => {
         // get tarif between the inputted & from db, if the difference is < 10%, allow it
         // else, throw error
-        const jenisKamar = ketersediaanKamar.find((it) => it.id === item.id_jk)
-        const tarif = await getTarifKamar(item.id_jk, detail.arrival_date, detail.departure_date, jenisKamar?.kamarTersedia ?? item.jumlah, jenisKamar?.totalKamar ?? item.jumlah, item.jumlah)
+        const thisJK = ketersediaanKamar.find((it) => it.id === item.id_jk)
+        const tarif = await getTarifKamar(item.id_jk, detail.arrival_date, detail.departure_date, thisJK?.kamarTersedia ?? item.jumlah, thisJK?.totalKamar ?? item.jumlah, item.jumlah)
 
         // console.log(item.id_jk, item.harga, tarif)
-        if (Math.abs(tarif.harga - item.harga) > 0.1 * item.harga) {
+        if (Math.abs(tarif.harga - item.harga) > 0.05 * item.harga) {
             throw new Error("Telah terjadi perubahan harga signifikan. Silakan coba lagi.")
         }
 
-        if (item.jumlah > (jenisKamar?.kamarTersedia ?? 0)) {
-            throw new Error(`Jumlah kamar tersedia saat ini hanya ${jenisKamar?.kamarTersedia}. Silakan coba lagi.`)
+        if (item.jumlah > (thisJK?.kamarTersedia ?? 0)) {
+            throw new Error(`Jumlah kamar ${thisJK?.id} tersedia saat ini hanya ${thisJK?.kamarTersedia}. Silakan coba lagi.`)
         }
 
         for (let i = 0; i < item.jumlah; i++) {
@@ -347,17 +342,15 @@ export default class BookingController {
             }
 
             // Remarks
-            if (item.kamarTersedia < jumlah_kamar) {
-                remarks.push({
-                    type: "w",
-                    message: `Jumlah kamar tersedia hanya ${item.kamarTersedia}`
-                })
-            }
-
-            if (item.kamarTersedia === 0) {
+            if (item.kamarTersedia <= 0) {
                 remarks.push({
                     type: "e",
                     message: `Tidak ada kamar tersedia`
+                })
+            } else if (item.kamarTersedia < jumlah_kamar) {
+                remarks.push({
+                    type: "w",
+                    message: `Jumlah kamar tersedia hanya ${item.kamarTersedia}`
                 })
             }
 
@@ -464,8 +457,8 @@ export default class BookingController {
         }
 
         const { jenis_kamar, detail } = validate.validated()
-        detail.arrival_date = moment(detail.arrival_date).toDate()
-        detail.departure_date = moment(detail.departure_date).toDate()
+        detail.arrival_date = new Date(detail.arrival_date)
+        detail.departure_date = new Date(detail.departure_date)
         detail.jumlah_dewasa = +detail.jumlah_dewasa
         detail.jumlah_anak = +detail.jumlah_anak
 

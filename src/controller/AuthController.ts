@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ApiResponse } from "../modules/ApiResponses";
-import PrismaScope from "../modules/PrismaService";
+import { prisma } from "../modules/PrismaService";
 import bcrypt from "bcrypt";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
@@ -276,54 +276,52 @@ export default class AuthController {
 
         const { email, password, nama, no_telp, alamat, no_identitas, jenis_identitas } = validation.validated();
 
-        return PrismaScope(async (prisma) => {
-            // Check email taken
-            const emailExists = await prisma.user_customer.findFirst({
-                where: {
-                    type: 'p',
-                    email: email
-                }
-            })
-
-            if (emailExists) {
-                return ApiResponse.error(res, {
-                    message: 'Email sudah digunakan',
-                    errors: {
-                        email: 'Email sudah digunakan'
-                    }
-                }, 422)
-            }
-
-            const hashedPassword = await bcrypt.hash(password, 10);
-            const userCustomer = await prisma.user_customer.create({
-                data: {
-                    type: 'p',
-                    email: email,
-                    nama: nama,
-                    password: hashedPassword,
-                    no_telp: no_telp,
-                    alamat: alamat,
-                    no_identitas: no_identitas,
-                    jenis_identitas: jenis_identitas
-                }
-            })
-
-            // Send email
-            const token = await Authentication.generateTokenC(userCustomer, 'verification')
-            const decodedToken = Authentication.decodeToken<JwtUserCustomer>(token)
-            try {
-                await Mail.sendUserActivation(userCustomer, token, new Date(decodedToken!!.exp!! * 1000))
-                return ApiResponse.success(res, {
-                    message: "Berhasil mendaftar. Silakan cek email Anda untuk memverifikasi akun.",
-                    data: userCustomer
-                }, 201)
-            } catch (e) {
-                return ApiResponse.error(res, {
-                    message: "Gagal mengirim email verifikasi password. Silakan hubungi Admin untuk memverifikasi email Anda.",
-                    errors: null
-                }, 500)
+        // Check email taken
+        const emailExists = await prisma.user_customer.findFirst({
+            where: {
+                type: 'p',
+                email: email
             }
         })
+
+        if (emailExists) {
+            return ApiResponse.error(res, {
+                message: 'Email sudah digunakan',
+                errors: {
+                    email: 'Email sudah digunakan'
+                }
+            }, 422)
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const userCustomer = await prisma.user_customer.create({
+            data: {
+                type: 'p',
+                email: email,
+                nama: nama,
+                password: hashedPassword,
+                no_telp: no_telp,
+                alamat: alamat,
+                no_identitas: no_identitas,
+                jenis_identitas: jenis_identitas
+            }
+        })
+
+        // Send email
+        const token = await Authentication.generateTokenC(userCustomer, 'verification')
+        const decodedToken = Authentication.decodeToken<JwtUserCustomer>(token)
+        try {
+            await Mail.sendUserActivation(userCustomer, token, new Date(decodedToken!!.exp!! * 1000))
+            return ApiResponse.success(res, {
+                message: "Berhasil mendaftar. Silakan cek email Anda untuk memverifikasi akun.",
+                data: userCustomer
+            }, 201)
+        } catch (e) {
+            return ApiResponse.error(res, {
+                message: "Gagal mengirim email verifikasi password. Silakan hubungi Admin untuk memverifikasi email Anda.",
+                errors: null
+            }, 500)
+        }
     }
 
     static async logoutCustomer(req: CustomerRequest, res: Response) {
@@ -381,28 +379,26 @@ export default class AuthController {
         }
 
         // update user
-        return await PrismaScope(async (prisma) => {
-            await prisma.user_customer.update({
-                where: {
-                    id: user.id
-                },
-                data: {
-                    verified_at: new Date()
-                }
-            })
+        await prisma.user_customer.update({
+            where: {
+                id: user.id
+            },
+            data: {
+                verified_at: new Date()
+            }
+        })
 
-            // Delete all token
-            await prisma.tokens.deleteMany({
-                where: {
-                    id_user: user.id,
-                    intent: 'verification'
-                }
-            })
+        // Delete all token
+        await prisma.tokens.deleteMany({
+            where: {
+                id_user: user.id,
+                intent: 'verification'
+            }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil memverifikasi email",
-                data: null
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil memverifikasi email",
+            data: null
         })
     }
 
@@ -453,40 +449,38 @@ export default class AuthController {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        return await PrismaScope(async (prisma) => {
-            if (decodedToken.user_type === 'c') {
-                await prisma.user_customer.update({
-                    where: {
-                        id: user.id
-                    },
-                    data: {
-                        password: hashedPassword,
-                        password_last_changed: new Date()
-                    }
-                })
-            } else {
-                await prisma.user_pegawai.update({
-                    where: {
-                        id: user.id
-                    },
-                    data: {
-                        password: hashedPassword
-                    }
-                })
-            }
-
-            // Delete all token
-            await prisma.tokens.deleteMany({
+        if (decodedToken.user_type === 'c') {
+            await prisma.user_customer.update({
                 where: {
-                    id_user: user.id,
-                    intent: 'passreset'
+                    id: user.id
+                },
+                data: {
+                    password: hashedPassword,
+                    password_last_changed: new Date()
                 }
             })
-
-            return ApiResponse.success(res, {
-                message: "Berhasil mengubah password",
-                data: null
+        } else {
+            await prisma.user_pegawai.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    password: hashedPassword
+                }
             })
+        }
+
+        // Delete all token
+        await prisma.tokens.deleteMany({
+            where: {
+                id_user: user.id,
+                intent: 'passreset'
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mengubah password",
+            data: null
         })
     }
 
@@ -521,74 +515,72 @@ export default class AuthController {
 
         const { email, type } = validation.validated();
 
-        return await PrismaScope(async (prisma) => {
-            if (type === 'c') {
-                const user = await prisma.user_customer.findUnique({
-                    where: {
-                        type_email: {
-                            type: 'p',
-                            email: email
-                        }
-                    }
-                })
-
-                if (user === null) {
-                    return ApiResponse.error(res, {
-                        message: "Email tidak terdaftar",
-                        errors: {
-                            email: "Email tidak terdaftar"
-                        }
-                    }, 400)
-                }
-
-                // Send email
-                const token = await Authentication.generateTokenC(user, 'passreset')
-                const decodedToken = Authentication.decodeToken<JwtUserCustomer>(token)
-                try {
-                    await Mail.sendPasswordReset(user, token, new Date(decodedToken!!.exp!! * 1000))
-                    return ApiResponse.success(res, {
-                        message: "Berhasil mengirim email reset password",
-                        data: null
-                    })
-                } catch (e) {
-                    return ApiResponse.error(res, {
-                        message: "Gagal mengirim email reset password",
-                        errors: null
-                    }, 500)
-                }
-
-            } else {
-                const user = await prisma.user_pegawai.findUnique({
-                    where: {
+        if (type === 'c') {
+            const user = await prisma.user_customer.findUnique({
+                where: {
+                    type_email: {
+                        type: 'p',
                         email: email
                     }
-                })
-
-                if (user === null) {
-                    return ApiResponse.error(res, {
-                        message: "Email tidak terdaftar",
-                        errors: {
-                            email: "Email tidak terdaftar"
-                        }
-                    }, 400)
                 }
+            })
 
-                // Send email
-                const token = await Authentication.generateTokenP(user, 'passreset')
-                const decodedToken = Authentication.decodeToken<JwtUserPegawai>(token)
-                try {
-                    await Mail.sendPasswordReset(user, token, new Date(decodedToken!!.exp!! * 1000))
-                    return ApiResponse.success(res, {
-                        message: "Berhasil mengirim email reset password",
-                        data: null
-                    })
-                } catch (e) {
-                    return ApiResponse.error(res, {
-                        message: "Gagal mengirim email reset password",
-                        errors: null
-                    }, 500)
-                }
+            if (user === null) {
+                return ApiResponse.error(res, {
+                    message: "Email tidak terdaftar",
+                    errors: {
+                        email: "Email tidak terdaftar"
+                    }
+                }, 400)
             }
-        })
+
+            // Send email
+            const token = await Authentication.generateTokenC(user, 'passreset')
+            const decodedToken = Authentication.decodeToken<JwtUserCustomer>(token)
+            try {
+                await Mail.sendPasswordReset(user, token, new Date(decodedToken!!.exp!! * 1000))
+                return ApiResponse.success(res, {
+                    message: "Berhasil mengirim email reset password",
+                    data: null
+                })
+            } catch (e) {
+                return ApiResponse.error(res, {
+                    message: "Gagal mengirim email reset password",
+                    errors: null
+                }, 500)
+            }
+
+        } else {
+            const user = await prisma.user_pegawai.findUnique({
+                where: {
+                    email: email
+                }
+            })
+
+            if (user === null) {
+                return ApiResponse.error(res, {
+                    message: "Email tidak terdaftar",
+                    errors: {
+                        email: "Email tidak terdaftar"
+                    }
+                }, 400)
+            }
+
+            // Send email
+            const token = await Authentication.generateTokenP(user, 'passreset')
+            const decodedToken = Authentication.decodeToken<JwtUserPegawai>(token)
+            try {
+                await Mail.sendPasswordReset(user, token, new Date(decodedToken!!.exp!! * 1000))
+                return ApiResponse.success(res, {
+                    message: "Berhasil mengirim email reset password",
+                    data: null
+                })
+            } catch (e) {
+                return ApiResponse.error(res, {
+                    message: "Gagal mengirim email reset password",
+                    errors: null
+                }, 500)
+            }
+        }
     }
 }

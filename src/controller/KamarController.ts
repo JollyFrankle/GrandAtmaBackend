@@ -1,7 +1,7 @@
 import { Response, Router } from "express";
 import { PegawaiRequest } from "../modules/Middlewares";
 import { ApiResponse } from "../modules/ApiResponses";
-import PrismaScope from "../modules/PrismaService";
+import { prisma } from "../modules/PrismaService";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
 
@@ -38,26 +38,24 @@ export default class KamarController {
 
         const { search, is_smoking, jenis_kamar, jenis_bed, no_lantai } = validation.validated()
 
-        return PrismaScope(async (prisma) => {
-            const kamarList = await prisma.kamar.findMany({
-                where: {
-                    no_kamar: {
-                        contains: search
-                    },
-                    is_smoking: is_smoking,
-                    id_jenis_kamar: jenis_kamar,
-                    jenis_bed: jenis_bed,
-                    no_lantai: no_lantai
+        const kamarList = await prisma.kamar.findMany({
+            where: {
+                no_kamar: {
+                    contains: search
                 },
-                include: {
-                    jenis_kamar: true
-                }
-            })
+                is_smoking: is_smoking,
+                id_jenis_kamar: jenis_kamar,
+                jenis_bed: jenis_bed,
+                no_lantai: no_lantai
+            },
+            include: {
+                jenis_kamar: true
+            }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data kamar",
-                data: kamarList
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data kamar",
+            data: kamarList
         })
     }
 
@@ -68,27 +66,25 @@ export default class KamarController {
 
         const { no_kamar } = req.params
 
-        return PrismaScope(async (prisma) => {
-            const kamar = await prisma.kamar.findUnique({
-                where: {
-                    no_kamar: no_kamar
-                },
-                include: {
-                    jenis_kamar: true
-                }
-            })
-
-            if (!kamar) {
-                return ApiResponse.error(res, {
-                    message: "Kamar tidak ditemukan",
-                    errors: {}
-                }, 404)
+        const kamar = await prisma.kamar.findUnique({
+            where: {
+                no_kamar: no_kamar
+            },
+            include: {
+                jenis_kamar: true
             }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data kamar",
-                data: kamar
-            })
+        if (!kamar) {
+            return ApiResponse.error(res, {
+                message: "Kamar tidak ditemukan",
+                errors: {}
+            }, 404)
+        }
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data kamar",
+            data: kamar
         })
     }
 
@@ -125,56 +121,54 @@ export default class KamarController {
 
         const { no_kamar, id_jenis_kamar, jenis_bed, no_lantai, is_smoking } = validation.validated()
 
-        return PrismaScope(async (prisma) => {
-            const allowedBedTypes = await prisma.jenis_kamar.findFirst({
-                where: {
-                    id: id_jenis_kamar
-                },
-                select: {
-                    tipe_bed: true
-                }
-            })
-
-            const tipeBed = JSON.parse(allowedBedTypes?.tipe_bed || '[]')
-            if (!tipeBed.includes(jenis_bed)) {
-                return ApiResponse.error(res, {
-                    message: "Jenis bed tidak tersedia untuk jenis kamar ini",
-                    errors: {
-                        jenis_bed: "Jenis bed tidak tersedia untuk jenis kamar ini"
-                    }
-                }, 422)
+        const allowedBedTypes = await prisma.jenis_kamar.findFirst({
+            where: {
+                id: id_jenis_kamar
+            },
+            select: {
+                tipe_bed: true
             }
+        })
 
-            // Check if kamar already exists
-            const kamarExists = await prisma.kamar.findUnique({
-                where: {
-                    no_kamar: no_kamar
+        const tipeBed = JSON.parse(allowedBedTypes?.tipe_bed || '[]')
+        if (!tipeBed.includes(jenis_bed)) {
+            return ApiResponse.error(res, {
+                message: "Jenis bed tidak tersedia untuk jenis kamar ini",
+                errors: {
+                    jenis_bed: "Jenis bed tidak tersedia untuk jenis kamar ini"
                 }
-            })
+            }, 422)
+        }
 
-            if (kamarExists) {
-                return ApiResponse.error(res, {
-                    message: "Kamar sudah ada",
-                    errors: {
-                        no_kamar: "Kamar sudah ada"
-                    }
-                }, 422)
+        // Check if kamar already exists
+        const kamarExists = await prisma.kamar.findUnique({
+            where: {
+                no_kamar: no_kamar
             }
+        })
 
-            const kamar = await prisma.kamar.create({
-                data: {
-                    no_kamar,
-                    id_jenis_kamar: +id_jenis_kamar,
-                    jenis_bed,
-                    no_lantai: +no_lantai,
-                    is_smoking: +is_smoking
+        if (kamarExists) {
+            return ApiResponse.error(res, {
+                message: "Kamar sudah ada",
+                errors: {
+                    no_kamar: "Kamar sudah ada"
                 }
-            })
+            }, 422)
+        }
 
-            return ApiResponse.success(res, {
-                message: "Berhasil membuat kamar",
-                data: kamar
-            })
+        const kamar = await prisma.kamar.create({
+            data: {
+                no_kamar,
+                id_jenis_kamar: +id_jenis_kamar,
+                jenis_bed,
+                no_lantai: +no_lantai,
+                is_smoking: +is_smoking
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil membuat kamar",
+            data: kamar
         })
     }
 
@@ -223,43 +217,41 @@ export default class KamarController {
 
         const { id_jenis_kamar, jenis_bed, no_lantai, is_smoking } = validation.validated()
 
-        return PrismaScope(async (prisma) => {
-            const allowedBedTypes = await prisma.jenis_kamar.findFirst({
-                where: {
-                    id: id_jenis_kamar
-                },
-                select: {
-                    tipe_bed: true
-                }
-            })
-
-            const tipeBed = JSON.parse(allowedBedTypes?.tipe_bed || '[]')
-            if (!tipeBed.includes(jenis_bed)) {
-                return ApiResponse.error(res, {
-                    message: "Jenis bed tidak tersedia untuk jenis kamar ini",
-                    errors: {
-                        jenis_bed: "Jenis bed tidak tersedia untuk jenis kamar ini"
-                    }
-                }, 422)
+        const allowedBedTypes = await prisma.jenis_kamar.findFirst({
+            where: {
+                id: id_jenis_kamar
+            },
+            select: {
+                tipe_bed: true
             }
+        })
 
-            const kamar = await prisma.kamar.update({
-                where: {
-                    no_kamar: no_kamar
-                },
-                data: {
-                    id_jenis_kamar,
-                    jenis_bed,
-                    no_lantai: +no_lantai,
-                    is_smoking: +is_smoking,
-                    updated_at: new Date()
+        const tipeBed = JSON.parse(allowedBedTypes?.tipe_bed || '[]')
+        if (!tipeBed.includes(jenis_bed)) {
+            return ApiResponse.error(res, {
+                message: "Jenis bed tidak tersedia untuk jenis kamar ini",
+                errors: {
+                    jenis_bed: "Jenis bed tidak tersedia untuk jenis kamar ini"
                 }
-            })
+            }, 422)
+        }
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mengubah data kamar",
-                data: kamar
-            })
+        const kamar = await prisma.kamar.update({
+            where: {
+                no_kamar: no_kamar
+            },
+            data: {
+                id_jenis_kamar,
+                jenis_bed,
+                no_lantai: +no_lantai,
+                is_smoking: +is_smoking,
+                updated_at: new Date()
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mengubah data kamar",
+            data: kamar
         })
     }
 
@@ -270,28 +262,24 @@ export default class KamarController {
 
         const { no_kamar } = req.params
 
-        return PrismaScope(async (prisma) => {
-            await prisma.kamar.delete({
-                where: {
-                    no_kamar: no_kamar
-                }
-            })
+        await prisma.kamar.delete({
+            where: {
+                no_kamar: no_kamar
+            }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil menghapus data kamar",
-                data: null
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil menghapus data kamar",
+            data: null
         })
     }
 
     static async getAllJenisKamar(_: PegawaiRequest, res: Response) {
-        return PrismaScope(async (prisma) => {
-            const jenisKamarList = await prisma.jenis_kamar.findMany()
+        const jenisKamarList = await prisma.jenis_kamar.findMany()
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data jenis kamar",
-                data: jenisKamarList
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data jenis kamar",
+            data: jenisKamarList
         })
     }
 }

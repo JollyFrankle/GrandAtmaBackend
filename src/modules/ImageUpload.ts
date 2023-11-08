@@ -1,8 +1,8 @@
 import Jimp from "jimp"
 import fs from "fs"
-import PrismaScope from "./PrismaService"
-import Authentication from "./Authentication"
 import multer from "multer"
+import { prisma } from "./PrismaService"
+import Authentication from "./Authentication"
 
 const UPLOAD_PATH = __dirname + "/../../uploads/"
 export const multerUploadDest = multer({ dest: UPLOAD_PATH })
@@ -88,21 +88,19 @@ export default class ImageUpload {
 
         // Store in db
         return img.getBufferAsync(Jimp.MIME_JPEG)
-            .then((buffer) => {
-                return PrismaScope(async (prisma) => {
-                    // set mime type to jpg
-                    const image = await prisma.images.create({
-                        data: {
-                            data: buffer,
-                            uid: Authentication.generateAuthToken()
-                        }
-                    })
-
-                    return {
-                        success: true,
-                        data: image
-                    } as UploadOK
+            .then(async (buffer) => {
+                // set mime type to jpg
+                const image = await prisma.images.create({
+                    data: {
+                        data: buffer,
+                        uid: Authentication.generateAuthToken()
+                    }
                 })
+
+                return {
+                    success: true,
+                    data: image
+                } as UploadOK
             }).catch((err) => {
                 return {
                     success: false,

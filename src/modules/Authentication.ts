@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
-import PrismaScope from './PrismaService'
+import { prisma } from './PrismaService'
 import crypto from "crypto"
 import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from './Models'
 import { Request, Response } from 'express'
@@ -13,44 +13,40 @@ export default class Authentication {
     }
 
     static async attemptCustomer(username: string, password: string) {
-        return PrismaScope(async (prisma) => {
-            const userCustomer = await prisma.user_customer.findUnique({
-                where: {
-                    type_email: {
-                        type: 'p',
-                        email: username
-                    }
-                }
-            })
-
-            if (userCustomer !== null && userCustomer.password !== null) {
-                const isPasswordMatch = await bcrypt.compare(password, userCustomer.password);
-                if (isPasswordMatch) {
-                    return userCustomer
+        const userCustomer = await prisma.user_customer.findUnique({
+            where: {
+                type_email: {
+                    type: 'p',
+                    email: username
                 }
             }
-
-            return null
         })
+
+        if (userCustomer !== null && userCustomer.password !== null) {
+            const isPasswordMatch = await bcrypt.compare(password, userCustomer.password);
+            if (isPasswordMatch) {
+                return userCustomer
+            }
+        }
+
+        return null
     }
 
     static async attemptPegawai(username: string, password: string) {
-        return PrismaScope(async (prisma) => {
-            const userPegawai = await prisma.user_pegawai.findFirst({
-                where: {
-                    email: username
-                }
-            })
-
-            if (userPegawai !== null) {
-                const isPasswordMatch = await bcrypt.compare(password, userPegawai.password);
-                if (isPasswordMatch) {
-                    return userPegawai
-                }
+        const userPegawai = await prisma.user_pegawai.findFirst({
+            where: {
+                email: username
             }
-
-            return null
         })
+
+        if (userPegawai !== null) {
+            const isPasswordMatch = await bcrypt.compare(password, userPegawai.password);
+            if (isPasswordMatch) {
+                return userPegawai
+            }
+        }
+
+        return null
     }
 
     static generateAuthToken(length: number = 36) {
@@ -72,17 +68,15 @@ export default class Authentication {
 
         const fullToken = Authentication.decodeToken(jtwToken)
 
-        await PrismaScope(async (prisma) => {
-            await prisma.tokens.create({
-                data: {
-                    token: generatedToken,
-                    id_user: user.id!!,
-                    user_type: 'c',
-                    intent: intent,
-                    created_at: new Date(fullToken!!.iat!! * 1000),
-                    expires_at: new Date(fullToken!!.exp!! * 1000)
-                }
-            })
+        await prisma.tokens.create({
+            data: {
+                token: generatedToken,
+                id_user: user.id!!,
+                user_type: 'c',
+                intent: intent,
+                created_at: new Date(fullToken!!.iat!! * 1000),
+                expires_at: new Date(fullToken!!.exp!! * 1000)
+            }
         })
 
         return jtwToken
@@ -102,17 +96,15 @@ export default class Authentication {
 
         const fullToken = Authentication.decodeToken(jtwToken)
 
-        await PrismaScope(async (prisma) => {
-            await prisma.tokens.create({
-                data: {
-                    token: generatedToken,
-                    id_user: user.id!!,
-                    user_type: 'p',
-                    intent: intent,
-                    created_at: new Date(fullToken!!.iat!! * 1000),
-                    expires_at: new Date(fullToken!!.exp!! * 1000)
-                }
-            })
+        await prisma.tokens.create({
+            data: {
+                token: generatedToken,
+                id_user: user.id!!,
+                user_type: 'p',
+                intent: intent,
+                created_at: new Date(fullToken!!.iat!! * 1000),
+                expires_at: new Date(fullToken!!.exp!! * 1000)
+            }
         })
 
         return jtwToken
@@ -128,54 +120,50 @@ export default class Authentication {
     }
 
     static async getUserFromToken(decodedToken: JwtUserCustomer | JwtUserPegawai, intent: JwtUserCustomer["intent"] = 'auth') {
-        return PrismaScope(async (prisma) => {
-            const tokenValid = await prisma.tokens.findFirst({
+        const tokenValid = await prisma.tokens.findFirst({
+            where: {
+                token: decodedToken.token,
+                revoked: 0,
+                expires_at: {
+                    gte: new Date()
+                },
+                intent: intent
+            }
+        })
+
+        if (tokenValid === null) {
+            return null
+        }
+
+        // Check in customer or pegawai
+        let user: UserCustomer | UserPegawai | null = null
+        if (tokenValid.user_type === 'c') {
+            user = await prisma.user_customer.findUnique({
                 where: {
-                    token: decodedToken.token,
-                    revoked: 0,
-                    expires_at: {
-                        gte: new Date()
-                    },
-                    intent: intent
+                    id: tokenValid.id_user,
+                    // enabled: 1
                 }
             })
+        } else {
+            user = await prisma.user_pegawai.findUnique({
+                where: {
+                    id: tokenValid.id_user,
+                    // enabled: 1
+                }
+            })
+        }
 
-            if (tokenValid === null) {
-                return null
-            }
-
-            // Check in customer or pegawai
-            let user: UserCustomer | UserPegawai | null = null
-            if (tokenValid.user_type === 'c') {
-                user = await prisma.user_customer.findUnique({
-                    where: {
-                        id: tokenValid.id_user,
-                        // enabled: 1
-                    }
-                })
-            } else {
-                user = await prisma.user_pegawai.findUnique({
-                    where: {
-                        id: tokenValid.id_user,
-                        // enabled: 1
-                    }
-                })
-            }
-
-            return user
-        })
+        return user
     }
 
     static async revokeToken(token: string) {
-        return PrismaScope(async (prisma) => {
-            const updated = await prisma.tokens.delete({
-                where: {
-                    token: token
-                }
-            }).catch(() => null)
+        const updated = await prisma.tokens.delete({
+            where: {
+                token: token
+            }
+        }).catch(() => null)
 
-            return updated !== null
-        })
+        return updated !== null
     }
 
     /**

@@ -92,17 +92,19 @@ model reservasi {
   total               Int                 @default(0) @db.UnsignedInt
   deposit             Int?                @db.UnsignedInt
   permintaan_tambahan String?             @db.Text
-  bukti_transfer      String?             @db.VarChar(100)
+  bukti_transfer      String?             @db.Char(36)
   created_at          DateTime            @default(now()) @db.Timestamp(0)
   updated_at          DateTime            @default(now()) @db.Timestamp(0)
   invoice             invoice?
   user_customer       user_customer       @relation(fields: [id_customer], references: [id], onDelete: Cascade, map: "reservasi_ibfk_1")
   user_pegawai        user_pegawai?       @relation(fields: [id_sm], references: [id], onDelete: Cascade, map: "reservasi_ibfk_2")
+  images              images?             @relation(fields: [bukti_transfer], references: [uid], map: "reservasi_ibfk_3")
   reservasi_layanan   reservasi_layanan[]
   reservasi_rooms     reservasi_rooms[]
 
   @@index([id_customer], map: "id_customer")
   @@index([id_sm], map: "id_sm")
+  @@index([bukti_transfer], map: "bukti_transfer")
 }
 
 model reservasi_layanan {
@@ -215,6 +217,7 @@ model images {
   created_at       DateTime           @default(now()) @db.Timestamp(0)
   jenis_kamar      jenis_kamar[]
   layanan_tambahan layanan_tambahan[]
+  reservasi        reservasi[]
 }
 
 enum user_customer_type {

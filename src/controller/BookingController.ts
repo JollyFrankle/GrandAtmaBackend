@@ -1,12 +1,12 @@
 import { Request, Response, Router } from "express";
 import { CustomerOrPegawaiRequest, CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
-import { ReservasiRooms, UserCustomer, UserPegawai } from "../modules/Models";
+import { LayananTambahan, ReservasiLayanan, ReservasiRooms, UserCustomer, UserPegawai } from "../modules/Models";
 import { generateIdBooking } from "../modules/IdGenerator";
 import { ApiResponse } from "../modules/ApiResponses";
-import PrismaScope from "../modules/PrismaService";
+import { prisma } from "../modules/PrismaService";
 import Validation from "../modules/Validation";
-import Authentication from "../modules/Authentication";
 import moment from "moment-timezone";
+import ImageUpload, { multerUploadDest } from "../modules/ImageUpload";
 
 function getHargaWithMarkup(hargaBasic: number, arrivalDate: Date, departureDate: Date, jumlahKamarTersedia: number, maxJumlahKamar: number, jumlahKamarBooking: number) {
     // decreasse by 2% each day as it gets closer to arrival date
@@ -50,201 +50,210 @@ async function getKetersediaanKamar(arrivalDate: Date, departureDate: Date, maxJ
         throw new Error(`Maksimal pemesanan adalah ${maxJumlahMalam} malam`)
     }
 
-    return await PrismaScope(async (prisma) => {
-        const jumlahKamarPerJenisKamar = await prisma.kamar.groupBy({
-            by: ["id_jenis_kamar"],
-            _count: {
-                no_kamar: true
-            }
-        })
+    const jumlahKamarPerJenisKamar = await prisma.kamar.groupBy({
+        by: ["id_jenis_kamar"],
+        _count: {
+            no_kamar: true
+        }
+    })
 
-        const jumlahJenisKamar = jumlahKamarPerJenisKamar.map((item) => ({
-            id: item.id_jenis_kamar,
-            totalKamar: item._count.no_kamar,
-            kamarTersedia: item._count.no_kamar,
-            terisiPerHari: Array(jumlahMalam).fill(0)
-        }))
+    const jumlahJenisKamar = jumlahKamarPerJenisKamar.map((item) => ({
+        id: item.id_jenis_kamar,
+        totalKamar: item._count.no_kamar,
+        kamarTersedia: item._count.no_kamar,
+        terisiPerHari: Array(jumlahMalam).fill(0)
+    }))
 
-        for (let i = 0; i < jumlahMalam; i++) {
-            const tglCI = momentCheckIn.clone().add(i, "days").toDate()
-            const tglCO = momentCheckIn.clone().add(i + 1, "days").toDate()
+    for (let i = 0; i < jumlahMalam; i++) {
+        const tglCI = momentCheckIn.clone().add(i, "days").toDate()
+        const tglCO = momentCheckIn.clone().add(i + 1, "days").toDate()
 
-            const jumlahTerpesanPerJK = await prisma.reservasi_rooms.groupBy({
-                where: {
-                    OR: [
-                        {
-                            reservasi: {
-                                arrival_date: {
-                                    lt: tglCI
-                                },
-                                departure_date: {
-                                    gt: tglCI
-                                }
-                            }
-                        },
-                        {
-                            reservasi: {
-                                arrival_date: {
-                                    lt: tglCO
-                                },
-                                departure_date: {
-                                    gt: tglCO
-                                }
-                            }
-                        },
-                        {
-                            reservasi: {
-                                arrival_date: {
-                                    gte: tglCI
-                                },
-                                departure_date: {
-                                    lte: tglCO
-                                }
+        const jumlahTerpesanPerJK = await prisma.reservasi_rooms.groupBy({
+            where: {
+                OR: [
+                    {
+                        reservasi: {
+                            arrival_date: {
+                                lt: tglCI
+                            },
+                            departure_date: {
+                                gt: tglCI
                             }
                         }
-                    ]
-                },
-                by: ["id_jenis_kamar"],
-                _count: {
-                    _all: true
-                }
-            })
+                    },
+                    {
+                        reservasi: {
+                            arrival_date: {
+                                lt: tglCO
+                            },
+                            departure_date: {
+                                gt: tglCO
+                            }
+                        }
+                    },
+                    {
+                        reservasi: {
+                            arrival_date: {
+                                gte: tglCI
+                            },
+                            departure_date: {
+                                lte: tglCO
+                            }
+                        }
+                    }
+                ]
+            },
+            by: ["id_jenis_kamar"],
+            _count: {
+                _all: true
+            }
+        })
 
-            // Looping through each jumlahKamarTerpesanPerJenisKamar
-            for (const rooms of jumlahTerpesanPerJK) {
-                const idJK = rooms.id_jenis_kamar
-                const objJK = jumlahJenisKamar.find((item) => item.id === idJK)
+        // Looping through each jumlahKamarTerpesanPerJenisKamar
+        for (const rooms of jumlahTerpesanPerJK) {
+            const idJK = rooms.id_jenis_kamar
+            const objJK = jumlahJenisKamar.find((item) => item.id === idJK)
 
-                if (objJK) {
-                    // Fill the array
-                    objJK.terisiPerHari[i] = rooms._count._all
-                }
+            if (objJK) {
+                // Fill the array
+                objJK.terisiPerHari[i] = rooms._count._all
             }
         }
+    }
 
-        jumlahJenisKamar.forEach((item) => {
-            const maxTerisi = Math.max(...item.terisiPerHari, 0)
-            item.kamarTersedia -= maxTerisi
-        })
-        return jumlahJenisKamar
+    jumlahJenisKamar.forEach((item) => {
+        const maxTerisi = Math.max(...item.terisiPerHari, 0)
+        item.kamarTersedia -= maxTerisi
     })
+    return jumlahJenisKamar
 }
 
 async function getTarifKamar(idJK: number, arrivalDate: Date, departureDate: Date, jumlahKamarTersedia: number, maxJumlahKamar: number, jumlahKamarBooking: number) {
-    return await PrismaScope(async (prisma) => {
-        const tarifSeason = await prisma.tarif.findFirst({
-            where: {
-                id_jenis_kamar: idJK,
-                season: {
-                    AND: [
-                        {
-                            tanggal_start: {
-                                lte: arrivalDate
-                            }
-                        },
-                        {
-                            tanggal_end: {
-                                gte: arrivalDate // Mengikuti tanggal check-in
-                            }
+    const tarifSeason = await prisma.tarif.findFirst({
+        where: {
+            id_jenis_kamar: idJK,
+            season: {
+                AND: [
+                    {
+                        tanggal_start: {
+                            lte: arrivalDate
                         }
-                    ]
-                },
-            }
-        })
-
-        const jenisKamar = await prisma.jenis_kamar.findFirst({
-            where: {
-                id: idJK
+                    },
+                    {
+                        tanggal_end: {
+                            gte: arrivalDate // Mengikuti tanggal check-in
+                        }
+                    }
+                ]
             },
-            select: {
-                harga_dasar: true
-            }
-        })
-
-        const harga = tarifSeason?.harga ?? jenisKamar?.harga_dasar
-
-        if (!harga) {
-            throw new Error("Harga tidak ditemukan")
         }
-
-        return getHargaWithMarkup(harga, arrivalDate, departureDate, jumlahKamarTersedia, maxJumlahKamar, jumlahKamarBooking)
     })
+
+    const jenisKamar = await prisma.jenis_kamar.findFirst({
+        where: {
+            id: idJK
+        },
+        select: {
+            harga_dasar: true
+        }
+    })
+
+    const harga = tarifSeason?.harga ?? jenisKamar?.harga_dasar
+
+    if (!harga) {
+        throw new Error("Harga tidak ditemukan")
+    }
+
+    return getHargaWithMarkup(harga, arrivalDate, departureDate, jumlahKamarTersedia, maxJumlahKamar, jumlahKamarBooking)
 }
 
 async function createBooking(customer: UserCustomer, jenisKamar: { id_jk: number, jumlah: number, harga: number }[], detail: { arrival_date: Date, departure_date: Date, jumlah_dewasa: number, jumlah_anak: number }, petugasSM?: UserPegawai) {
-    return await PrismaScope(async (prisma) => {
-        let customerType: "P" | "G"
-        if (petugasSM) {
-            customerType = "G"
-        } else {
-            customerType = "P"
-        }
-        const idBooking = await generateIdBooking(customerType, new Date())
+    let customerType: "P" | "G"
+    if (petugasSM) {
+        customerType = "G"
+    } else {
+        customerType = "P"
+    }
 
-        // Insert into 'reservasi'
-        const reservasi = await prisma.reservasi.create({
-            data: {
-                id_customer: customer.id!!,
-                id_booking: idBooking,
-                id_sm: petugasSM?.id,
-                arrival_date: detail.arrival_date,
-                departure_date: detail.departure_date,
-                jumlah_dewasa: detail.jumlah_dewasa,
-                jumlah_anak: detail.jumlah_anak,
-                status: "pending",
-                tanggal_dl_booking: new Date(new Date().getTime() + 1000 * 60 * 20), // 20 minutes from now
-                total: 0,
-            }
-        })
-
-        // Insert into 'reservasi_rooms'
-        const ketersediaanKamar = await getKetersediaanKamar(detail.arrival_date, detail.departure_date, 30) // mungkin bisa throw error, tapi tidak masalah
-        const tarifKamar: ReservasiRooms[] = []
-
-        await Promise.all(jenisKamar.map(async (item) => {
-            // get tarif between the inputted & from db, if the difference is < 10%, allow it
-            // else, throw error
-            const jenisKamar = ketersediaanKamar.find((it) => it.id === item.id_jk)
-            const tarif = await getTarifKamar(item.id_jk, detail.arrival_date, detail.departure_date, jenisKamar?.kamarTersedia ?? item.jumlah, jenisKamar?.totalKamar ?? item.jumlah, item.jumlah)
-
-            // console.log(item.id_jk, item.harga, tarif)
-            if (Math.abs(tarif.harga - item.harga) > 0.1 * item.harga) {
-                throw new Error("Telah terjadi perubahan harga signifikan. Silakan coba lagi.")
-            }
-
-            if (item.jumlah > (jenisKamar?.kamarTersedia ?? 0)) {
-                throw new Error(`Jumlah kamar tersedia saat ini hanya ${jenisKamar?.kamarTersedia}. Silakan coba lagi.`)
-            }
-
-            for (let i = 0; i < item.jumlah; i++) {
-                tarifKamar.push({
-                    id_reservasi: reservasi.id!!,
-                    id_jenis_kamar: item.id_jk,
-                    harga_per_malam: tarif.harga
-                })
-            }
-        }))
-
-        await prisma.reservasi_rooms.createMany({
-            data: tarifKamar
-        })
-
-        const reservasiRooms = await prisma.reservasi_rooms.findMany({
-            where: {
-                id_reservasi: reservasi.id!!
-            },
-            include: {
-                jenis_kamar: true
-            }
-        })
-
-        // Total akan diupdate oleh trigger di database
-
-        return {
-            reservasi,
-            kamar: reservasiRooms
+    // Insert into 'reservasi'
+    const reservasi = await prisma.reservasi.create({
+        data: {
+            id_customer: customer.id!!,
+            // belum ada ID Booking, nanti digenerate saat mau bayar
+            id_sm: petugasSM?.id,
+            arrival_date: detail.arrival_date,
+            departure_date: detail.departure_date,
+            jumlah_dewasa: detail.jumlah_dewasa,
+            jumlah_anak: detail.jumlah_anak,
+            status: "pending-1",
+            tanggal_dl_booking: new Date(new Date().getTime() + 1000 * 60 * 20), // 20 minutes from now
+            total: 0,
         }
     })
+
+    // Insert into 'reservasi_rooms'
+    const ketersediaanKamar = await getKetersediaanKamar(detail.arrival_date, detail.departure_date, 30) // mungkin bisa throw error, tapi tidak masalah
+    const tarifKamar: ReservasiRooms[] = []
+
+    await Promise.all(jenisKamar.map(async (item) => {
+        // get tarif between the inputted & from db, if the difference is < 10%, allow it
+        // else, throw error
+        const jenisKamar = ketersediaanKamar.find((it) => it.id === item.id_jk)
+        const tarif = await getTarifKamar(item.id_jk, detail.arrival_date, detail.departure_date, jenisKamar?.kamarTersedia ?? item.jumlah, jenisKamar?.totalKamar ?? item.jumlah, item.jumlah)
+
+        // console.log(item.id_jk, item.harga, tarif)
+        if (Math.abs(tarif.harga - item.harga) > 0.1 * item.harga) {
+            throw new Error("Telah terjadi perubahan harga signifikan. Silakan coba lagi.")
+        }
+
+        if (item.jumlah > (jenisKamar?.kamarTersedia ?? 0)) {
+            throw new Error(`Jumlah kamar tersedia saat ini hanya ${jenisKamar?.kamarTersedia}. Silakan coba lagi.`)
+        }
+
+        for (let i = 0; i < item.jumlah; i++) {
+            tarifKamar.push({
+                id_reservasi: reservasi.id!!,
+                id_jenis_kamar: item.id_jk,
+                harga_per_malam: tarif.harga
+            })
+        }
+    }))
+
+    await prisma.reservasi_rooms.createMany({
+        data: tarifKamar
+    })
+
+    const reservasiRooms = await prisma.reservasi_rooms.findMany({
+        where: {
+            id_reservasi: reservasi.id!!
+        },
+        include: {
+            jenis_kamar: true
+        }
+    })
+
+    // Total akan diupdate oleh trigger di database
+
+    return {
+        reservasi,
+        kamar: reservasiRooms
+    }
+}
+
+async function getCurrentStage(id: number) {
+    const currentStage = (await prisma.reservasi.findFirst({
+        where: {
+            id: id,
+            tanggal_dl_booking: {
+                gte: new Date()
+            }
+        },
+        select: {
+            status: true
+        }
+    }))
+
+    return +(currentStage?.status.substring("pending-".length, "pending-".length+1) ?? 0)
 }
 
 function getCurrentDate() {
@@ -303,10 +312,33 @@ export default class BookingController {
             }
         }
 
-        return await PrismaScope(async (prisma) => {
-            let jumlahJenisKamar;
+        let jumlahJenisKamar;
+        try {
+            jumlahJenisKamar = await getKetersediaanKamar(check_in, check_out, 30)
+        } catch (error: any) {
+            return ApiResponse.error(res, {
+                message: error.message,
+                errors: null
+            }, 500)
+        }
+
+        // Get jenis kamar detail and tarif
+        const dataLengkap = (await Promise.all(jumlahJenisKamar.map(async (item) => {
+            const remarks: { type: "w" | "e", message: string }[] = []
+
+            const jenisKamar = await prisma.jenis_kamar.findFirst({
+                where: {
+                    id: item.id
+                }
+            })
+
+            if (!jenisKamar) {
+                return null
+            }
+
+            let tarifKamar;
             try {
-                jumlahJenisKamar = await getKetersediaanKamar(check_in, check_out, 30)
+                tarifKamar = await getTarifKamar(item.id, check_in, check_out, item.kamarTersedia, item.totalKamar, jumlah_kamar)
             } catch (error: any) {
                 return ApiResponse.error(res, {
                     message: error.message,
@@ -314,67 +346,42 @@ export default class BookingController {
                 }, 500)
             }
 
-            // Get jenis kamar detail and tarif
-            const dataLengkap = (await Promise.all(jumlahJenisKamar.map(async (item) => {
-                const remarks: { type: "w" | "e", message: string }[] = []
-
-                const jenisKamar = await prisma.jenis_kamar.findFirst({
-                    where: {
-                        id: item.id
-                    }
+            // Remarks
+            if (item.kamarTersedia < jumlah_kamar) {
+                remarks.push({
+                    type: "w",
+                    message: `Jumlah kamar tersedia hanya ${item.kamarTersedia}`
                 })
+            }
 
-                if (!jenisKamar) {
-                    return null
+            if (item.kamarTersedia === 0) {
+                remarks.push({
+                    type: "e",
+                    message: `Tidak ada kamar tersedia`
+                })
+            }
+
+            if (jumlah_dewasa + jumlah_anak > jumlah_kamar * jenisKamar.kapasitas) {
+                remarks.push({
+                    type: "w",
+                    message: `Kapasitas kamar mungkin tidak mencukupi untuk jumlah tamu`
+                })
+            }
+
+            return {
+                jenis_kamar: jenisKamar,
+                rincian_tarif: {
+                    jumlah_kamar: item.kamarTersedia,
+                    harga_diskon: tarifKamar.harga,
+                    harga: tarifKamar.harga_max,
+                    catatan: remarks
                 }
+            }
+        }))).filter((item) => item !== null)
 
-                let tarifKamar;
-                try {
-                    tarifKamar = await getTarifKamar(item.id, check_in, check_out, item.kamarTersedia, item.totalKamar, jumlah_kamar)
-                } catch (error: any) {
-                    return ApiResponse.error(res, {
-                        message: error.message,
-                        errors: null
-                    }, 500)
-                }
-
-                // Remarks
-                if (item.kamarTersedia < jumlah_kamar) {
-                    remarks.push({
-                        type: "w",
-                        message: `Jumlah kamar tersedia hanya ${item.kamarTersedia}`
-                    })
-                }
-
-                if (item.kamarTersedia === 0) {
-                    remarks.push({
-                        type: "e",
-                        message: `Tidak ada kamar tersedia`
-                    })
-                }
-
-                if (jumlah_dewasa + jumlah_anak > jumlah_kamar * jenisKamar.kapasitas) {
-                    remarks.push({
-                        type: "w",
-                        message: `Kapasitas kamar mungkin tidak mencukupi untuk jumlah tamu`
-                    })
-                }
-
-                return {
-                    jenis_kamar: jenisKamar,
-                    rincian_tarif: {
-                        jumlah_kamar: item.kamarTersedia,
-                        harga_diskon: tarifKamar.harga,
-                        harga: tarifKamar.harga_max,
-                        catatan: remarks
-                    }
-                }
-            }))).filter((item) => item !== null)
-
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data ketersediaan kamar dan tarif",
-                data: dataLengkap
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data ketersediaan kamar dan tarif",
+            data: dataLengkap
         })
     }
 
@@ -477,6 +484,251 @@ export default class BookingController {
             }, 500)
         }
     }
+
+    static async getDeadlineBookingC(req: CustomerRequest, res: Response) {
+        const customer = req.data?.user!!
+        const id = req.params.id
+
+        const reservasi = await prisma.reservasi.findFirst({
+            where: {
+                id_customer: customer.id!!,
+                id: +id
+            }
+        })
+
+        if (!reservasi) {
+            return ApiResponse.error(res, {
+                message: "Reservasi tidak ditemukan.",
+                errors: {
+                    ECODE: "RESERVASI_NOT_FOUND"
+                }
+            }, 404)
+        }
+
+        if (!reservasi.status.startsWith("pending-")) {
+            return ApiResponse.error(res, {
+                message: "Reservasi ini tidak dapat diganggu gugat lagi.",
+                errors: {
+                    ECODE: "RESERVASI_NOT_PENDING"
+                }
+            }, 400)
+        }
+
+        if ((reservasi.tanggal_dl_booking ?? new Date()) <= new Date()) {
+            return ApiResponse.error(res, {
+                message: "Reservasi ini sudah melewati batas waktu pemesanan.",
+                errors: {
+                    ECODE: "RESERVASI_EXPIRED"
+                }
+            }, 400)
+        }
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan deadline booking",
+            data: {
+                deadline: reservasi.tanggal_dl_booking,
+                stage: +reservasi.status.substring("pending-".length, "pending-".length+1)
+            }
+        })
+    }
+
+    static async apiStep1BookingC(req: CustomerRequest, res: Response) {
+        // Digunakan pada halaman 'customer/booking/{id}/step-1' untuk mengisi layanan tambahan & permintaan khusus
+        const id = req.params.id
+        const customer = req.data?.user!!
+
+        // MAIN LOGIC START
+        const stage = await getCurrentStage(+id)
+        if (stage !== 1) {
+            return ApiResponse.error(res, {
+                message: "Server dan client tidak sinkron. Silakan refresh halaman.",
+                errors: null
+            }, 400)
+        }
+
+        const validate = Validation.body(req, {
+            layanan_tambahan: {
+                required: false,
+                type: "array",
+                customRule: (value: any[]) => {
+                    for (const item of value) {
+                        const validateFLT = new Validation(item, {
+                            id: {
+                                required: true,
+                                type: "number"
+                            },
+                            amount: {
+                                required: true,
+                                type: "number",
+                                min: 1
+                            }
+                        }).validate()
+
+                        if (validateFLT.fails()) {
+                            return validateFLT.errorToString()
+                        }
+                    }
+
+                    return null
+                }
+            },
+            permintaan_khusus: {
+                required: true,
+                customRule: (value) => {
+                    const validateDetail = new Validation(value, {
+                        expected_check_in: {
+                            required: false
+                        },
+                        expected_check_out: {
+                            required: false
+                        },
+                        permintaan_tambahan_lain: {
+                            required: false,
+                            maxLength: 254
+                        }
+                    }).validate()
+
+                    if (validateDetail.fails()) {
+                        return validateDetail.errorToString()
+                    }
+
+                    return null
+                }
+            }
+        })
+
+        if (validate.fails()) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: validate.errors
+            }, 422)
+        }
+
+        const { layanan_tambahan, permintaan_khusus } = validate.validated()
+
+        // Permintaan khusus
+        let permintaanTambahan: string | null = "";
+        if (permintaan_khusus.expected_check_in) {
+            permintaanTambahan += `Check-in: ${permintaan_khusus.expected_check_in}.\n`
+        }
+        if (permintaan_khusus.expected_check_out) {
+            permintaanTambahan += `Check-out: ${permintaan_khusus.expected_check_out}.\n`
+        }
+        if (permintaan_khusus.permintaan_tambahan_lain) {
+            permintaanTambahan += `Permintaan lain:\n${permintaan_khusus.permintaan_tambahan_lain}`
+        }
+        permintaanTambahan = permintaanTambahan.trim() || null
+
+        const reservasi = await prisma.reservasi.update({
+            data: {
+                permintaan_tambahan: permintaanTambahan,
+                status: "pending-2"
+            },
+            where: {
+                id_customer: customer.id!!,
+                id: +id
+            }
+        })
+
+        // Layanan tambahan
+        const layananTambahan = await prisma.layanan_tambahan.findMany()
+
+        const layananTambahanReservasi = layananTambahan.map<ReservasiLayanan>((item) => {
+            const layanan = (layanan_tambahan as { id: number, amount: number }[]).find((it) => it.id === item.id)
+            return {
+                id_reservasi: reservasi.id!!,
+                id_layanan: item.id,
+                qty: (layanan?.amount ?? 0),
+                total: item.tarif * (layanan?.amount ?? 0)
+            }
+        }).filter((item) => item.qty > 0)
+
+        await prisma.reservasi_layanan.createMany({
+            data: layananTambahanReservasi
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mengisi layanan tambahan & permintaan khusus",
+            data: {
+                reservasi,
+                layanan_tambahan: layananTambahanReservasi
+            }
+        })
+    }
+
+    static async apiStep2BookingC(req: CustomerRequest, res: Response) {
+        const id = req.params.id
+        const customer = req.data?.user!!
+        const idBookingPrefix = 'P'
+
+        // MAIN LOGIC START
+        const stage = await getCurrentStage(+id)
+        if (stage !== 2) {
+            return ApiResponse.error(res, {
+                message: "Server dan client tidak sinkron. Silakan refresh halaman.",
+                errors: null
+            }, 400)
+        }
+
+        // Update reservasi: set id booking
+        const idBooking = await generateIdBooking(idBookingPrefix, new Date())
+        const reservasi = await prisma.reservasi.update({
+            data: {
+                id_booking: idBooking,
+                status: "pending-3"
+            },
+            where: {
+                id_customer: customer.id!!,
+                id: +id
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mengupdate data reservasi",
+            data: reservasi
+        })
+    }
+
+    static async apiStep3BookingC(req: CustomerRequest, res: Response) {
+        const id = req.params.id
+        const customer = req.data?.user!!
+        const bukti = req.file
+
+        // MAIN LOGIC START
+        const stage = await getCurrentStage(+id)
+        if (stage !== 3) {
+            return ApiResponse.error(res, {
+                message: "Server dan client tidak sinkron. Silakan refresh halaman.",
+                errors: null
+            }, 400)
+        }
+
+        const result = await ImageUpload.handlesingleUpload("gambar", bukti)
+        if (!result.success) {
+            return ApiResponse.error(res, {
+                message: "Gagal mengupload gambar",
+                errors: result.errors
+            }, 422)
+        }
+
+        // Update reservasi: set bukti
+        const reservasi = await prisma.reservasi.update({
+            data: {
+                bukti_transfer: result.data.uid,
+                tanggal_dp: new Date(),
+                status: "lunas" // auto set lunas
+            },
+            where: {
+                id_customer: customer.id!!,
+                id: +id
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mengupdate data reservasi",
+            data: reservasi
+        })
+    }
 }
 
 // Router
@@ -485,6 +737,10 @@ routerPublic.post("/search", BookingController.getKetersediaanKamarDanTarif)
 
 export const routerC = Router()
 routerC.post("/", BookingController.createBookingC)
+routerC.get("/:id/deadline", BookingController.getDeadlineBookingC)
+routerC.post("/:id/step-1", BookingController.apiStep1BookingC)
+routerC.post("/:id/step-2", BookingController.apiStep2BookingC)
+routerC.post("/:id/step-3", multerUploadDest.single('bukti'), BookingController.apiStep3BookingC)
 
 export const routerP = Router()
 

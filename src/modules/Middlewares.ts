@@ -106,9 +106,9 @@ export default class Middlewares {
         res.setHeader("Content-Type", "application/json")
         console.log(new Date(), req.method, req.url)
         // delay 500ms
-        setTimeout(() => {
+        // setTimeout(() => {
             next()
-        }, 500)
+        // }, 500)
         // next()
     }
 

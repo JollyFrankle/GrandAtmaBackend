@@ -1,7 +1,7 @@
 import { Response, Router } from "express";
 import { PegawaiRequest } from "../modules/Middlewares";
 import { ApiResponse } from "../modules/ApiResponses";
-import PrismaScope from "../modules/PrismaService";
+import { prisma } from "../modules/PrismaService";
 import Validation from "../modules/Validation";
 import moment from "moment";
 import { Tarif } from "../modules/Models";
@@ -31,27 +31,25 @@ export default class SeasonController {
 
         const { search, type } = validation.validated()
 
-        return PrismaScope(async (prisma) => {
-            const seasonList = await prisma.season.findMany({
-                where: {
-                    nama: {
-                        contains: search
-                    },
-                    type: type
+        const seasonList = await prisma.season.findMany({
+            where: {
+                nama: {
+                    contains: search
                 },
-                include: {
-                    tarif: {
-                        include: {
-                            jenis_kamar: true
-                        }
+                type: type
+            },
+            include: {
+                tarif: {
+                    include: {
+                        jenis_kamar: true
                     }
                 }
-            })
+            }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data season",
-                data: seasonList
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data season",
+            data: seasonList
         })
     }
 
@@ -62,27 +60,25 @@ export default class SeasonController {
 
         const { id } = req.params
 
-        return PrismaScope(async (prisma) => {
-            const season = await prisma.season.findUnique({
-                where: {
-                    id: +id
-                },
-                include: {
-                    tarif: true
-                }
-            })
-
-            if (season === null) {
-                return ApiResponse.error(res, {
-                    message: "Season tidak ditemukan",
-                    errors: null
-                }, 404)
+        const season = await prisma.season.findUnique({
+            where: {
+                id: +id
+            },
+            include: {
+                tarif: true
             }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data season",
-                data: season
-            })
+        if (season === null) {
+            return ApiResponse.error(res, {
+                message: "Season tidak ditemukan",
+                errors: null
+            }, 404)
+        }
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data season",
+            data: season
         })
     }
 
@@ -135,72 +131,70 @@ export default class SeasonController {
 
         const { nama, type, tanggal_start, tanggal_end, tarif } = validation.validated()
 
-        return PrismaScope(async (prisma) => {
-            // Get overlapping season
-            const overlappingSeason = await prisma.season.findFirst({
-                where: {
-                    OR: [
-                        {
-                            tanggal_start: {
-                                lte: tanggal_start
-                            },
-                            tanggal_end: {
-                                gte: tanggal_start
-                            }
+        // Get overlapping season
+        const overlappingSeason = await prisma.season.findFirst({
+            where: {
+                OR: [
+                    {
+                        tanggal_start: {
+                            lte: tanggal_start
                         },
-                        {
-                            tanggal_start: {
-                                lte: tanggal_end
-                            },
-                            tanggal_end: {
-                                gte: tanggal_end
-                            }
-                        },
-                        {
-                            tanggal_start: {
-                                gte: tanggal_start
-                            },
-                            tanggal_end: {
-                                lte: tanggal_end
-                            }
+                        tanggal_end: {
+                            gte: tanggal_start
                         }
-                    ]
-                }
-            })
-
-            if (overlappingSeason !== null) {
-                return ApiResponse.error(res, {
-                    message: `Season tidak dapat diubah: sudah ada season ${overlappingSeason.nama} di tanggal ini.`,
-                    errors: null
-                }, 422)
+                    },
+                    {
+                        tanggal_start: {
+                            lte: tanggal_end
+                        },
+                        tanggal_end: {
+                            gte: tanggal_end
+                        }
+                    },
+                    {
+                        tanggal_start: {
+                            gte: tanggal_start
+                        },
+                        tanggal_end: {
+                            lte: tanggal_end
+                        }
+                    }
+                ]
             }
+        })
 
-            const season = await prisma.season.create({
-                data: {
-                    nama: nama,
-                    type: type,
-                    tanggal_start: tanggal_start,
-                    tanggal_end: tanggal_end,
-                    updated_at: new Date()
-                }
-            })
+        if (overlappingSeason !== null) {
+            return ApiResponse.error(res, {
+                message: `Season tidak dapat diubah: sudah ada season ${overlappingSeason.nama} di tanggal ini.`,
+                errors: null
+            }, 422)
+        }
 
-            const tarifList = (tarif as Tarif[]).map((item) => {
-                return {
-                    id_season: season.id,
-                    id_jenis_kamar: +item.id_jenis_kamar,
-                    harga: +item.harga
-                }
-            })
+        const season = await prisma.season.create({
+            data: {
+                nama: nama,
+                type: type,
+                tanggal_start: tanggal_start,
+                tanggal_end: tanggal_end,
+                updated_at: new Date()
+            }
+        })
 
-            await prisma.tarif.createMany({
-                data: tarifList
-            })
+        const tarifList = (tarif as Tarif[]).map((item) => {
+            return {
+                id_season: season.id,
+                id_jenis_kamar: +item.id_jenis_kamar,
+                harga: +item.harga
+            }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil membuat season",
-                data: season
-            })
+        await prisma.tarif.createMany({
+            data: tarifList
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil membuat season",
+            data: season
         })
     }
 
@@ -251,120 +245,118 @@ export default class SeasonController {
 
         const { nama, type, tanggal_start, tanggal_end, tarif } = bodyValidation.validated()
 
-        return PrismaScope(async (prisma) => {
-            const season = await prisma.season.findFirst({
-                where: {
-                    id: +id
-                }
-            })
-
-            if (season === null) {
-                return ApiResponse.error(res, {
-                    message: "Season tidak ditemukan",
-                    errors: null
-                }, 404)
+        const season = await prisma.season.findFirst({
+            where: {
+                id: +id
             }
+        })
 
-            // if tanggalStart < now + 2 bulan, return error
-            if (moment(season.tanggal_start).isBefore(SeasonController.getTanggalMaxInputSeason())) {
-                return ApiResponse.error(res, {
-                    message: "Season tidak dapat diubah: tanggal mulai kurang dari 2 bulan dari sekarang",
-                    errors: null
-                }, 422)
-            }
+        if (season === null) {
+            return ApiResponse.error(res, {
+                message: "Season tidak ditemukan",
+                errors: null
+            }, 404)
+        }
 
-            // check if there is overlapping season
-            const overlappingSeason = await prisma.season.findFirst({
-                where: {
-                    id: {
-                        not: +id
-                    },
-                    OR: [
-                        {
-                            tanggal_start: {
-                                lte: tanggal_start
-                            },
-                            tanggal_end: {
-                                gte: tanggal_start
-                            }
-                        },
-                        {
-                            tanggal_start: {
-                                lte: tanggal_end
-                            },
-                            tanggal_end: {
-                                gte: tanggal_end
-                            }
-                        },
-                        {
-                            tanggal_start: {
-                                gte: tanggal_start
-                            },
-                            tanggal_end: {
-                                lte: tanggal_end
-                            }
-                        }
-                    ]
-                }
-            })
+        // if tanggalStart < now + 2 bulan, return error
+        if (moment(season.tanggal_start).isBefore(SeasonController.getTanggalMaxInputSeason())) {
+            return ApiResponse.error(res, {
+                message: "Season tidak dapat diubah: tanggal mulai kurang dari 2 bulan dari sekarang",
+                errors: null
+            }, 422)
+        }
 
-            if (overlappingSeason !== null) {
-                return ApiResponse.error(res, {
-                    message: `Season tidak dapat diubah: sudah ada season ${overlappingSeason.nama} di tanggal ini.`,
-                    errors: null
-                }, 422)
-            }
-
-            await prisma.season.update({
-                where: {
-                    id: +id
+        // check if there is overlapping season
+        const overlappingSeason = await prisma.season.findFirst({
+            where: {
+                id: {
+                    not: +id
                 },
-                data: {
-                    nama: nama,
-                    type: type,
-                    tanggal_start: tanggal_start,
-                    tanggal_end: tanggal_end
-                }
-            });
-
-            const updatedIds: number[] = [];
-            (tarif as Tarif[]).map(async (item) => {
-                item.id_season = season.id
-                item.harga = +item.harga
-                item.id_jenis_kamar = +item.id_jenis_kamar
-                if (item.id) {
-                    updatedIds.push(item.id)
-                    await prisma.tarif.update({
-                        data: item,
-                        where: {
-                            id: item.id
+                OR: [
+                    {
+                        tanggal_start: {
+                            lte: tanggal_start
+                        },
+                        tanggal_end: {
+                            gte: tanggal_start
                         }
-                    })
-                } else {
-                    item.id = undefined
-                    const tarifNew = await prisma.tarif.create({
-                        data: item
-                    })
-                    updatedIds.push(tarifNew.id)
-                }
-            })
-
-            // delete tarif yang tidak ada di updatedIds
-            await prisma.tarif.deleteMany({
-                where: {
-                    id_season: +id,
-                    NOT: {
-                        id: {
-                            in: updatedIds
+                    },
+                    {
+                        tanggal_start: {
+                            lte: tanggal_end
+                        },
+                        tanggal_end: {
+                            gte: tanggal_end
+                        }
+                    },
+                    {
+                        tanggal_start: {
+                            gte: tanggal_start
+                        },
+                        tanggal_end: {
+                            lte: tanggal_end
                         }
                     }
-                }
-            })
+                ]
+            }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mengubah data season",
-                data: season
-            })
+        if (overlappingSeason !== null) {
+            return ApiResponse.error(res, {
+                message: `Season tidak dapat diubah: sudah ada season ${overlappingSeason.nama} di tanggal ini.`,
+                errors: null
+            }, 422)
+        }
+
+        await prisma.season.update({
+            where: {
+                id: +id
+            },
+            data: {
+                nama: nama,
+                type: type,
+                tanggal_start: tanggal_start,
+                tanggal_end: tanggal_end
+            }
+        });
+
+        const updatedIds: number[] = [];
+        (tarif as Tarif[]).map(async (item) => {
+            item.id_season = season.id
+            item.harga = +item.harga
+            item.id_jenis_kamar = +item.id_jenis_kamar
+            if (item.id) {
+                updatedIds.push(item.id)
+                await prisma.tarif.update({
+                    data: item,
+                    where: {
+                        id: item.id
+                    }
+                })
+            } else {
+                item.id = undefined
+                const tarifNew = await prisma.tarif.create({
+                    data: item
+                })
+                updatedIds.push(tarifNew.id)
+            }
+        })
+
+        // delete tarif yang tidak ada di updatedIds
+        await prisma.tarif.deleteMany({
+            where: {
+                id_season: +id,
+                NOT: {
+                    id: {
+                        in: updatedIds
+                    }
+                }
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mengubah data season",
+            data: season
         })
     }
 
@@ -375,38 +367,36 @@ export default class SeasonController {
 
         const { id } = req.params
 
-        return PrismaScope(async (prisma) => {
-            const season = await prisma.season.findFirst({
-                where: {
-                    id: +id
-                }
-            })
-
-            if (season === null) {
-                return ApiResponse.error(res, {
-                    message: "Season tidak ditemukan",
-                    errors: null
-                }, 404)
+        const season = await prisma.season.findFirst({
+            where: {
+                id: +id
             }
+        })
 
-            // if tanggalStart < now + 2 bulan, return error
-            if (moment(season.tanggal_start).isBefore(SeasonController.getTanggalMaxInputSeason())) {
-                return ApiResponse.error(res, {
-                    message: "Season tidak dapat dihapus: tanggal mulai kurang dari 2 bulan dari sekarang",
-                    errors: null
-                }, 422)
+        if (season === null) {
+            return ApiResponse.error(res, {
+                message: "Season tidak ditemukan",
+                errors: null
+            }, 404)
+        }
+
+        // if tanggalStart < now + 2 bulan, return error
+        if (moment(season.tanggal_start).isBefore(SeasonController.getTanggalMaxInputSeason())) {
+            return ApiResponse.error(res, {
+                message: "Season tidak dapat dihapus: tanggal mulai kurang dari 2 bulan dari sekarang",
+                errors: null
+            }, 422)
+        }
+
+        await prisma.season.delete({
+            where: {
+                id: +id
             }
+        })
 
-            await prisma.season.delete({
-                where: {
-                    id: +id
-                }
-            })
-
-            return ApiResponse.success(res, {
-                message: "Berhasil menghapus data season",
-                data: season
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil menghapus data season",
+            data: season
         })
     }
 

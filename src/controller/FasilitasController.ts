@@ -1,7 +1,7 @@
 import { Response, Router } from "express";
 import { PegawaiRequest } from "../modules/Middlewares";
 import { ApiResponse } from "../modules/ApiResponses";
-import PrismaScope from "../modules/PrismaService";
+import { prisma } from "../modules/PrismaService";
 import Validation from "../modules/Validation";
 import Authentication from "../modules/Authentication";
 import ImageUpload, { multerUploadDest } from "../modules/ImageUpload";
@@ -12,13 +12,11 @@ export default class FasilitasController {
             return Authentication.defaultUnauthorizedResponse(res)
         }
 
-        return PrismaScope(async (prisma) => {
-            const fasilitas = await prisma.layanan_tambahan.findMany()
+        const fasilitas = await prisma.layanan_tambahan.findMany()
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data fasilitas",
-                data: fasilitas
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data fasilitas",
+            data: fasilitas
         })
     }
 
@@ -70,35 +68,33 @@ export default class FasilitasController {
             }, 422)
         }
 
-        return PrismaScope(async (prisma) => {
-            // Check for similar name
-            const similar = await prisma.layanan_tambahan.findFirst({
-                where: {
-                    nama: nama
-                }
-            })
-
-            if (similar !== null) {
-                return ApiResponse.error(res, {
-                    message: "Nama fasilitas sudah digunakan",
-                    errors: null
-                }, 422)
+        // Check for similar name
+        const similar = await prisma.layanan_tambahan.findFirst({
+            where: {
+                nama: nama
             }
+        })
 
-            const fasilitas = await prisma.layanan_tambahan.create({
-                data: {
-                    nama: nama,
-                    satuan: satuan,
-                    tarif: +tarif,
-                    gambar: result.data.uid,
-                    short_desc: short_desc
-                }
-            })
+        if (similar !== null) {
+            return ApiResponse.error(res, {
+                message: "Nama fasilitas sudah digunakan",
+                errors: null
+            }, 422)
+        }
 
-            return ApiResponse.success(res, {
-                message: "Berhasil membuat fasilitas",
-                data: fasilitas
-            })
+        const fasilitas = await prisma.layanan_tambahan.create({
+            data: {
+                nama: nama,
+                satuan: satuan,
+                tarif: +tarif,
+                gambar: result.data.uid,
+                short_desc: short_desc
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil membuat fasilitas",
+            data: fasilitas
         })
     }
 
@@ -109,24 +105,22 @@ export default class FasilitasController {
 
         const { id } = req.params
 
-        return PrismaScope(async (prisma) => {
-            const fasilitas = await prisma.layanan_tambahan.findUnique({
-                where: {
-                    id: +id
-                }
-            })
-
-            if (fasilitas === null) {
-                return ApiResponse.error(res, {
-                    message: "Fasilitas tidak ditemukan",
-                    errors: null
-                }, 404)
+        const fasilitas = await prisma.layanan_tambahan.findUnique({
+            where: {
+                id: +id
             }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mendapatkan data fasilitas",
-                data: fasilitas
-            })
+        if (fasilitas === null) {
+            return ApiResponse.error(res, {
+                message: "Fasilitas tidak ditemukan",
+                errors: null
+            }, 404)
+        }
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data fasilitas",
+            data: fasilitas
         })
     }
 
@@ -166,41 +160,39 @@ export default class FasilitasController {
 
         const { nama, satuan, tarif, short_desc } = validation.validated()
 
-        return PrismaScope(async (prisma) => {
-            // Check for similar name
-            const similar = await prisma.layanan_tambahan.findFirst({
-                where: {
-                    nama: nama,
-                    id: {
-                        not: +id
-                    }
+        // Check for similar name
+        const similar = await prisma.layanan_tambahan.findFirst({
+            where: {
+                nama: nama,
+                id: {
+                    not: +id
                 }
-            })
-
-            if (similar !== null) {
-                return ApiResponse.error(res, {
-                    message: "Nama fasilitas sudah digunakan",
-                    errors: null
-                }, 422)
             }
+        })
 
-            const fasilitas = await prisma.layanan_tambahan.update({
-                where: {
-                    id: +id
-                },
-                data: {
-                    nama: nama,
-                    satuan: satuan,
-                    tarif: +tarif,
-                    short_desc: short_desc,
-                    updated_at: new Date()
-                }
-            })
+        if (similar !== null) {
+            return ApiResponse.error(res, {
+                message: "Nama fasilitas sudah digunakan",
+                errors: null
+            }, 422)
+        }
 
-            return ApiResponse.success(res, {
-                message: "Berhasil mengupdate fasilitas",
-                data: fasilitas
-            })
+        const fasilitas = await prisma.layanan_tambahan.update({
+            where: {
+                id: +id
+            },
+            data: {
+                nama: nama,
+                satuan: satuan,
+                tarif: +tarif,
+                short_desc: short_desc,
+                updated_at: new Date()
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mengupdate fasilitas",
+            data: fasilitas
         })
     }
 
@@ -211,17 +203,15 @@ export default class FasilitasController {
 
         const { id } = req.params
 
-        return PrismaScope(async (prisma) => {
-            const fasilitas = await prisma.layanan_tambahan.delete({
-                where: {
-                    id: +id
-                }
-            })
+        const fasilitas = await prisma.layanan_tambahan.delete({
+            where: {
+                id: +id
+            }
+        })
 
-            return ApiResponse.success(res, {
-                message: "Berhasil menghapus fasilitas",
-                data: fasilitas
-            })
+        return ApiResponse.success(res, {
+            message: "Berhasil menghapus fasilitas",
+            data: fasilitas
         })
     }
 }

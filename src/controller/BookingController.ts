@@ -409,7 +409,7 @@ async function validateCreateBooking(req: Request, res: Response, idC: number, i
     detail.jumlah_anak = +detail.jumlah_anak
 
     try {
-        const createResult = await createBooking(jenis_kamar, detail, idSM ? 20 : 60, idC, idSM)
+        const createResult = await createBooking(jenis_kamar, detail, idSM ? 60 : 20, idC, idSM)
         return ApiResponse.success(res, {
             message: "Berhasil membuat reservasi",
             data: createResult
@@ -424,6 +424,7 @@ async function validateCreateBooking(req: Request, res: Response, idC: number, i
 
 async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga: number }[], detail: { arrival_date: Date, departure_date: Date, jumlah_dewasa: number, jumlah_anak: number }, deadlineBookingMinutes: number = 20, idC: number, idSM?: number) {
     // Insert into 'reservasi'
+    console.log(idC)
     const reservasi = await prisma.reservasi.create({
         data: {
             id_customer: idC,
@@ -682,17 +683,12 @@ async function apiStep2(req: Request, res: Response, idR: number, idC: number, i
 
 async function apiStep3(req: Request, res: Response, idR: number, idC: number, idSM?: number) {
     if (!idSM) {
-        const validate = Validation.body(req, {
-            bukti: {
-                required: true,
-                type: "file_single"
-            }
-        })
-
-        if (validate.fails()) {
+        if (!req.file) {
             return ApiResponse.error(res, {
-                message: "Validasi gagal",
-                errors: validate.errors
+                message: "Bukti transfer harus diupload",
+                errors: {
+                    bukti: "Bukti transfer harus diupload"
+                }
             }, 422)
         }
     } else {
@@ -966,7 +962,6 @@ export default class BookingController {
     static async apiStep3BookingC(req: CustomerRequest, res: Response) {
         const id = req.params.id
         const customer = req.data?.user!!
-        const bukti = req.file
 
         return await apiStep3(req, res, +id, customer.id!!)
     }

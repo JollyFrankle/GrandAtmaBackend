@@ -370,7 +370,7 @@ export default class AuthController {
         }
 
         // get user
-        const user = await Authentication.getUserFromToken(decodedToken, 'verification')
+        const user = await Authentication.getUserFromToken(decodedToken, 'verification', 'c')
         if (user === null) {
             return ApiResponse.error(res, {
                 message: "Token tidak valid",

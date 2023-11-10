@@ -11,6 +11,7 @@ import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./cont
 import { router as PDRouter } from "./controller/PublicDataController";
 import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP as BookingRouterP } from "./controller/BookingController";
 import getIP from "./modules/LocalNetwork";
+import CronJob from "./modules/CronJob";
 
 const app = express();
 
@@ -47,7 +48,7 @@ app.post("/pegawai/logout", AuthController.logoutPegawai)
 app.use("/pegawai/kamar", KamarRouter)
 app.use("/pegawai/season", SeasonRouter)
 app.use("/pegawai/fasilitas", FasilitasRouter)
-app.use("/pegawai/user", UserRouterP)
+app.use("/pegawai/customer", UserRouterP)
 app.use("/pegawai/reservasi", ReservasiRouterP)
 app.use("/pegawai/booking", BookingRouterP)
 
@@ -65,4 +66,6 @@ app.listen(process.env.PORT, () => {
 
 process.on('uncaughtException', (err) => {
     console.log(err)
-})
+});
+
+(() => CronJob.run())();

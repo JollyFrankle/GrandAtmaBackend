@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
-import { CustomerOrPegawaiRequest, CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
-import { LayananTambahan, ReservasiLayanan, ReservasiRooms, UserCustomer, UserPegawai } from "../modules/Models";
+import { CustomerRequest, PegawaiRequest } from "../modules/Middlewares";
+import { ReservasiLayanan, ReservasiRooms } from "../modules/Models";
 import { generateIdBooking } from "../modules/IdGenerator";
 import { ApiResponse } from "../modules/ApiResponses";
 import { prisma } from "../modules/PrismaService";
@@ -102,7 +102,12 @@ async function getKetersediaanKamar(arrivalDate: Date, departureDate: Date, maxJ
                             }
                         }
                     }
-                ]
+                ],
+                reservasi: {
+                    status: {
+                        notIn: ["batal", "expired"]
+                    }
+                }
             },
             by: ["id_jenis_kamar"],
             _count: {
@@ -257,7 +262,9 @@ async function getKetersediaanKamarDanTarif(req: Request, res: Response, _?: num
 
         let tarifKamar;
         try {
-            tarifKamar = await getTarifKamar(item.id, check_in, check_out, item.kamarTersedia, item.totalKamar, jumlah_kamar)
+            const tglCheckIn = new Date(check_in)
+            const tglCheckOut = new Date(check_out)
+            tarifKamar = await getTarifKamar(item.id, tglCheckIn, tglCheckOut, item.kamarTersedia, item.totalKamar, jumlah_kamar)
         } catch (error: any) {
             return null
         }
@@ -409,7 +416,7 @@ async function validateCreateBooking(req: Request, res: Response, idC: number, i
     detail.jumlah_anak = +detail.jumlah_anak
 
     try {
-        const createResult = await createBooking(jenis_kamar, detail, idSM ? 60 : 20, idC, idSM)
+        const createResult = await createBooking(jenis_kamar, detail, idSM ? 180 : 20, idC, idSM)
         return ApiResponse.success(res, {
             message: "Berhasil membuat reservasi",
             data: createResult
@@ -424,7 +431,6 @@ async function validateCreateBooking(req: Request, res: Response, idC: number, i
 
 async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga: number }[], detail: { arrival_date: Date, departure_date: Date, jumlah_dewasa: number, jumlah_anak: number }, deadlineBookingMinutes: number = 20, idC: number, idSM?: number) {
     // Insert into 'reservasi'
-    console.log(idC)
     const reservasi = await prisma.reservasi.create({
         data: {
             id_customer: idC,
@@ -450,27 +456,30 @@ async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga:
     // Insert into 'reservasi_rooms'
     const ketersediaanKamar = await getKetersediaanKamar(detail.arrival_date, detail.departure_date, maxJumlahMalam) // @throws Error
     const tarifKamar: ReservasiRooms[] = []
+    const totalKamar = jenisKamar.reduce((acc, item) => acc + item.jumlah, 0)
 
     await Promise.all(jenisKamar.map(async (item) => {
-        // get tarif between the inputted & from db, if the difference is < 10%, allow it
+        // get tarif between the inputted & from db, if the difference is < 5%, allow it
         // else, throw error
         const thisJK = ketersediaanKamar.find((it) => it.id === item.id_jk)
-        const tarif = await getTarifKamar(item.id_jk, detail.arrival_date, detail.departure_date, thisJK?.kamarTersedia ?? item.jumlah, thisJK?.totalKamar ?? item.jumlah, item.jumlah)
+        const tarif = await getTarifKamar(item.id_jk, detail.arrival_date, detail.departure_date, thisJK?.kamarTersedia ?? item.jumlah, thisJK?.totalKamar ?? item.jumlah, totalKamar)
 
         // console.log(item.id_jk, item.harga, tarif)
         if (Math.abs(tarif.harga - item.harga) > 0.05 * item.harga) {
-            throw new Error("Telah terjadi perubahan harga signifikan. Silakan coba lagi.")
+            await prisma.reservasi.delete({ where: { id: reservasi.id!! } })
+            throw new Error(`Telah terjadi perubahan harga signifikan sejak Anda memeriksa harga kamar. Silakan refresh halaman ini.`)
         }
 
         if (item.jumlah > (thisJK?.kamarTersedia ?? 0)) {
-            throw new Error(`Jumlah kamar ${thisJK?.id} tersedia saat ini hanya ${thisJK?.kamarTersedia}. Silakan coba lagi.`)
+            await prisma.reservasi.delete({ where: { id: reservasi.id!! } })
+            throw new Error(`Jumlah kamar ${item.id_jk} tersedia saat ini hanya sebanyak ${thisJK?.kamarTersedia}. Silakan refresh halaman ini.`)
         }
 
         for (let i = 0; i < item.jumlah; i++) {
             tarifKamar.push({
                 id_reservasi: reservasi.id!!,
                 id_jenis_kamar: item.id_jk,
-                harga_per_malam: tarif.harga
+                harga_per_malam: item.harga
             })
         }
     }))
@@ -721,6 +730,7 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
     }
 
     let uidGambar: string | undefined = undefined
+    let status: "dp" | "lunas"
     if (!idSM) {
         // Customer P: Menggunakan bukti gambar
         const result = await ImageUpload.handlesingleUpload("gambar", bukti)
@@ -732,9 +742,10 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
         }
 
         uidGambar = result.data.uid
+        status = "lunas" // auto set lunas
     } else {
         // Customer G: Menggunakan jumlah DP
-        const minimalDp = (((await prisma.reservasi.findFirst({
+        const totalHargaKamar = ((await prisma.reservasi.findFirst({
             where: {
                 id_customer: idC!!,
                 id: idR,
@@ -743,7 +754,9 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
             select: {
                 total: true
             }
-        }))?.total) ?? 0) / 2
+        }))?.total) ?? 0
+
+        const minimalDp = totalHargaKamar / 2
 
         if (jumlah_dp < minimalDp) {
             return ApiResponse.error(res, {
@@ -753,6 +766,12 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
                 }
             }, 422)
         }
+
+        if (jumlah_dp >= totalHargaKamar) {
+            status = "lunas"
+        } else {
+            status = "dp"
+        }
     }
 
     // Update reservasi: set bukti
@@ -761,7 +780,7 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
             bukti_transfer: uidGambar,
             jumlah_dp: jumlah_dp,
             tanggal_dp: new Date(),
-            status: "lunas" // auto set lunas
+            status: status // auto set lunas
         },
         where: {
             id_customer: idC!!,

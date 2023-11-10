@@ -119,7 +119,7 @@ export default class Authentication {
         }
     }
 
-    static async getUserFromToken(decodedToken: JwtUserCustomer | JwtUserPegawai, intent: JwtUserCustomer["intent"] = 'auth') {
+    static async getUserFromToken(decodedToken: JwtUserCustomer | JwtUserPegawai, intent: JwtUserCustomer["intent"] = 'auth', type?: 'c' | 'p') {
         const tokenValid = await prisma.tokens.findFirst({
             where: {
                 token: decodedToken.token,
@@ -132,6 +132,10 @@ export default class Authentication {
         })
 
         if (tokenValid === null) {
+            return null
+        }
+
+        if (type && tokenValid.user_type !== type) {
             return null
         }
 

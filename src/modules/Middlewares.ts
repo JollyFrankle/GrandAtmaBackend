@@ -53,7 +53,7 @@ export default class Middlewares {
         }
 
         // Get user
-        const user = await Authentication.getUserFromToken(decodedToken)
+        const user = await Authentication.getUserFromToken(decodedToken, 'auth', 'c')
         if (user === null) {
             return ApiResponse.error(res, {
                 message: "Unauthorized",
@@ -79,7 +79,7 @@ export default class Middlewares {
         }
 
         // Get user
-        const user = await Authentication.getUserFromToken(decodedToken)
+        const user = await Authentication.getUserFromToken(decodedToken, 'auth', 'p')
         if (user === null) {
             return ApiResponse.error(res, {
                 message: "Unauthorized",

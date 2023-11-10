@@ -8,6 +8,19 @@ import { Prisma } from "@prisma/client";
 import moment from "moment-timezone";
 
 async function getAllBookings(idC: number, status?: string) {
+    let idCQuery: Prisma.reservasiWhereInput = {}
+    if (idC === -1) {
+        idCQuery = {
+            user_customer: {
+                type: "g"
+            }
+        }
+    } else {
+        idCQuery = {
+            id_customer: idC
+        }
+    }
+
     let statusQuery: Prisma.reservasiWhereInput = {}
     if (status === "upcoming") {
         statusQuery = {
@@ -28,7 +41,9 @@ async function getAllBookings(idC: number, status?: string) {
             NOT: {
                 OR: [
                     {
-                        status: "batal"
+                        status: {
+                            in: ["batal", "expired"]
+                        }
                     },
                     {
                         status: {
@@ -52,7 +67,9 @@ async function getAllBookings(idC: number, status?: string) {
         statusQuery = {
             OR: [
                 {
-                    status: "batal"
+                    status: {
+                        in: ["batal", "expired"]
+                    }
                 },
                 {
                     status: {
@@ -68,7 +85,7 @@ async function getAllBookings(idC: number, status?: string) {
 
     return await prisma.reservasi.findMany({
         where: {
-            id_customer: idC,
+            ...idCQuery,
             ...statusQuery
         },
         include: {
@@ -161,6 +178,13 @@ export default class ReservasiController {
                 type: "g"
             }
         })
+
+        if (+idC !== -1 && !customer) {
+            return ApiResponse.error(res, {
+                message: "Customer tidak ditemukan",
+                errors: null
+            }, 404)
+        }
 
         return ApiResponse.success(res, {
             message: "Berhasil mendapatkan data reservasi",

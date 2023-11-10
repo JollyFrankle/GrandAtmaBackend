@@ -111,12 +111,9 @@ async function cancelBooking(idC: number, idReservasi: number) {
     }
 
     if (
-        reservasi.status === 'batal' ||
-        (
-            reservasi.status.startsWith('pending-') &&
-            (reservasi.tanggal_dl_booking && reservasi.tanggal_dl_booking > new Date())
-        )
+        reservasi.status === 'batal' || reservasi.tanggal_dl_booking && reservasi.tanggal_dl_booking <= new Date()
     ) {
+        // Bisa batal kalau sudah buat tapi belum expired
         throw new Error("Reservasi sudah batal atau kadaluarsa")
     }
 
@@ -134,7 +131,9 @@ async function cancelBooking(idC: number, idReservasi: number) {
     })
 
     let batalMessage: string
-    if (reservasi.arrival_date > moment().add(7, 'days').toDate()) {
+    if (reservasi.status.startsWith("pending-")) {
+        batalMessage = "Reservasi yang belum selesai ini berhasil dibatalkan"
+    } else if(reservasi.arrival_date > moment().add(7, 'days').toDate()) {
         batalMessage = "Reservasi berhasil dibatalkan dan uang akan dikembalikan"
     } else {
         batalMessage = "Reservasi berhasil dibatalkan dan uang tidak dikembalikan"

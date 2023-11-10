@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Tanda Terima</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+        }
+
+        .flex {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .justify-end {
+            justify-content: flex-end;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .items-top {
+            align-items: flex-start;
+        }
+
+        .gap-4 {
+            gap: 1rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+        .text-end {
+            text-align: end;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6,
+        p {
+            margin: 0;
+        }
+
+        .table-bordered {
+            border-collapse: collapse;
+            border: 1px solid #6c757d;
+            width: 100%;
+        }
+
+        .table-bordered td,
+        .table-bordered th {
+            border: 1px solid #6c757d;
+            padding: .25rem .5rem;
+        }
+
+        .heading {
+            border-top: 1px solid #6c757d;
+            padding: .25rem 0;
+            text-align: center;
+            border-bottom: 1px solid #6c757d;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="flex gap-4 items-center" style="margin-bottom: 1rem;">
+        <img src="{{ b64Logo }}" style="width: 100px; height: fit-content; margin-right: 1rem;" />
+        <div style="flex: 1">
+            <h3>Grand Atma Hotel</h3>
+            <p>Jl. Babarsari No. 43, Caturtunggal, Depok, Sleman</p>
+            <p>Daerah Istimewa Yogyakarta 55281</p>
+            <p>Telp. (0274) 487711</p>
+        </div>
+    </div>
+
+    <h3 class="heading">TANDA TERIMA PEMESANAN</h3>
+
+    <div class="flex gap-4 justify-between mb-4 items-top">
+        <table>
+            <tr>
+                <td style="width: 8rem">ID Booking</td>
+                <td style="font-weight: bold">{{ detail_tt.id_booking }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">PIC SM</td>
+                <td style="font-weight: bold">{{ detail_tt.pic_sm }}</td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td style="width: 8rem">Tanggal</td>
+                <td style="font-weight: bold">{{ detail_tt.tanggal_dibuat }}</td>
+            </tr>
+        </table>
+    </div>
+    <div class="mb-4">
+        <table>
+            <tr>
+                <td style="width: 8rem">Nama</td>
+                <td style="font-weight: bold">{{ detail_tt.nama_customer }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Alamat</td>
+                <td style="font-weight: bold">{{ detail_tt.alamat_customer }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <h3 class="heading">DETAIL PEMESANAN</h3>
+    <div class="mb-4">
+        <table>
+            <tr>
+                <td style="width: 8rem">Check In</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.check_in }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Check Out</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.check_out }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Dewasa</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.jumlah_dewasa }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Anak-anak</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.jumlah_anak }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Tgl. Pembayaran</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.tanggal_dp }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <h3 class="heading">KAMAR</h3>
+    <table class="table-bordered mb-4">
+        <thead>
+            <tr>
+                <th style="width: 40%">Jenis Kamar</th>
+                <th style="width: 10%">Jumlah Malam</th>
+                <th style="width: 10%">Jumlah Kamar</th>
+                <th style="width: 20%">Harga</th>
+                <th style="width: 20%">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each kamar}}
+            <tr>
+                <td>{{ jenis_kamar }}</td>
+                <td class="text-center">{{ jumlah_malam }}</td>
+                <td class="text-center">{{ jumlah_kamar }}</td>
+                <td class="text-end">{{ harga }}</td>
+                <td class="text-end">{{ total }}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="4" class="text-end">Total</th>
+                <th class="text-end">{{ detail_tt.total_harga_kamar }}</th>
+            </tr>
+            <tr>
+                <td colspan="4" class="text-end">Uang Jaminan</td>
+                <td class="text-end">{{ detail_tt.uang_jaminan }}</td>
+            </tr>
+    </table>
+
+    <div>
+        <p style="margin-bottom: .5rem;">Permintaan tambahan:</p>
+        <p style="white-space: pre-wrap;">{{ detail_tt.permintaan_tambahan }}</p>
+    </div>
+
+</body>
+
+</html>

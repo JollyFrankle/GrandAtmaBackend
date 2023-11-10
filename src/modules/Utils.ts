@@ -19,7 +19,7 @@ export default class Utils {
     static currencyFormat = new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
-        maximumFractionDigits: 2
+        maximumFractionDigits: 0
     })
 
     static parseJsonElseNull(json: string): any {

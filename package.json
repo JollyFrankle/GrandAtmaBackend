@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",
-    "start-env": "ts-node -r dotenv/config src/index.ts"
+    "start-env": "ts-node -r dotenv/config src/index.ts",
+    "playground": "ts-node src/playground.ts"
   },
   "author": "",
   "license": "ISC",
@@ -35,6 +36,7 @@
     "jsonwebtoken": "^9.0.2",
     "moment-timezone": "^0.5.43",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.6"
+    "nodemailer": "^6.9.6",
+    "puppeteer": "^21.5.1"
   }
 }

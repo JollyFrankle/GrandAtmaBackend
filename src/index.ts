@@ -10,6 +10,7 @@ import { routerC as UserRouterC, routerP as UserRouterP } from "./controller/Use
 import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./controller/ReservasiController";
 import { router as PDRouter } from "./controller/PublicDataController";
 import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP as BookingRouterP } from "./controller/BookingController";
+import { router as PdfRouter } from "./controller/PdfController";
 import getIP from "./modules/LocalNetwork";
 import CronJob from "./modules/CronJob";
 
@@ -24,9 +25,13 @@ app.use(Middlewares.recipient)
 app.use("/customer", Middlewares.customer)
 app.use("/pegawai", Middlewares.pegawai)
 
+// Public folder
+app.use("/public", express.static(`${__dirname}/../public`))
+
 // Public routes
 app.use("/public", PDRouter)
 app.use("/public/booking", BookingRouterPublic)
+app.use("/public/pdf", PdfRouter)
 
 // Authentication
 app.post("/login", AuthController.login)

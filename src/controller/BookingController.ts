@@ -180,7 +180,7 @@ async function getKetersediaanKamarDanTarif(req: Request, res: Response, _?: num
         check_in: {
             required: true,
             type: "datetime",
-            after: getCurrentDate()
+            after: getCurrentDate(idSM ? 8 : 0)
         },
         check_out: {
             required: true,
@@ -357,7 +357,7 @@ async function validateCreateBooking(req: Request, res: Response, idC: number, i
                     arrival_date: {
                         required: true,
                         type: "datetime",
-                        after: getCurrentDate()
+                        after: getCurrentDate(idSM ? 8 : 0)
                     },
                     departure_date: {
                         required: true,
@@ -415,8 +415,22 @@ async function validateCreateBooking(req: Request, res: Response, idC: number, i
     detail.jumlah_dewasa = +detail.jumlah_dewasa
     detail.jumlah_anak = +detail.jumlah_anak
 
+    let deadlineBooking: Date
+    if (idSM) {
+        // Deadline = 7 hari sebelum arrival date
+        deadlineBooking = moment(detail.arrival_date).subtract(7, "days").set("h", 0).toDate()
+
+        // Kalau sisa waktu < 3 jam, deadline = 3 jam dari sekarang
+        const diff = moment(deadlineBooking).diff(moment(), "minutes")
+        if (diff < 180) {
+            deadlineBooking = new Date(new Date().getTime() + 1000 * 60 * 180)
+        }
+    } else {
+        // Deadline = 20 menit dari sekarang
+        deadlineBooking = new Date(new Date().getTime() + 1000 * 60 * 20)
+    }
     try {
-        const createResult = await createBooking(jenis_kamar, detail, idSM ? 180 : 20, idC, idSM)
+        const createResult = await createBooking(jenis_kamar, detail, deadlineBooking, idC, idSM)
         return ApiResponse.success(res, {
             message: "Berhasil membuat reservasi",
             data: createResult
@@ -429,7 +443,7 @@ async function validateCreateBooking(req: Request, res: Response, idC: number, i
     }
 }
 
-async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga: number }[], detail: { arrival_date: Date, departure_date: Date, jumlah_dewasa: number, jumlah_anak: number }, deadlineBookingMinutes: number = 20, idC: number, idSM?: number) {
+async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga: number }[], detail: { arrival_date: Date, departure_date: Date, jumlah_dewasa: number, jumlah_anak: number }, deadlineBooking: Date, idC: number, idSM?: number) {
     // Insert into 'reservasi'
     const reservasi = await prisma.reservasi.create({
         data: {
@@ -441,7 +455,7 @@ async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga:
             jumlah_dewasa: detail.jumlah_dewasa,
             jumlah_anak: detail.jumlah_anak,
             status: "pending-1",
-            tanggal_dl_booking: new Date(new Date().getTime() + 1000 * 60 * deadlineBookingMinutes), // deadlineBookingMinutes minutes from now
+            tanggal_dl_booking: deadlineBooking, // deadlineBookingMinutes minutes from now
             total: 0,
         }
     })
@@ -812,8 +826,8 @@ async function getCurrentStage(idR: number, idSM?: number) {
     return +(currentStage?.status.substring("pending-".length, "pending-".length + 1) ?? 0)
 }
 
-function getCurrentDate() {
-    return moment().set("hour", 0).set("minute", 0).set("second", 0).set("millisecond", 0).toDate()
+function getCurrentDate(plusDays?: number) {
+    return moment().set("hour", 0).set("minute", 0).set("second", 0).set("millisecond", 0).add(plusDays, "days").toDate()
 }
 
 export default class BookingController {

@@ -61,6 +61,9 @@ async function getAllBookings(idC: number, status?: string) {
             // tanggal check out < hari ini
             departure_date: {
                 lt: new Date(new Date().setHours(0, 0, 0, 0))
+            },
+            status: {
+                notIn: ["batal", "expired"]
             }
         }
     } else if (status === "cancelled") {
@@ -117,7 +120,7 @@ async function cancelBooking(idC: number, idReservasi: number) {
         throw new Error("Reservasi sudah batal atau kadaluarsa")
     }
 
-    if (reservasi.arrival_date < new Date()) {
+    if (reservasi.arrival_date < new Date() && !reservasi.status.startsWith("pending-")) {
         throw new Error("Reservasi tidak bisa dibatalkan karena sudah melewati tanggal check in")
     }
 

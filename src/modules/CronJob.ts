@@ -16,6 +16,29 @@ export default class CronJob {
                 status: "expired"
             }
         })
+
+        // Set status reservasi yang sudah lunas tetapi belum check in juga sampai jam check out menjadi batal
+        const jamCheckOut = 11 // time zone = WIB (dari process.env)
+        let date = new Date() // today
+        if (date.getHours() < jamCheckOut) {
+            date.setDate(date.getDate() - 1) // yesterday
+        }
+        date.setHours(jamCheckOut, 0, 0, 0) // set to jamCheckOut
+
+        await prisma.reservasi.updateMany({
+            where: {
+                status: {
+                    notIn: ["expired", "batal"]
+                },
+                checked_in: null,
+                departure_date: {
+                    lt: date
+                }
+            },
+            data: {
+                status: "batal"
+            }
+        })
     }
 
     private static async execute() {

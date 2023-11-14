@@ -211,7 +211,8 @@ async function getKetersediaanKamarDanTarif(req: Request, res: Response, _?: num
         }, 422)
     }
 
-    const { check_in, check_out, jumlah_kamar, jumlah_dewasa, jumlah_anak } = validation.validated()
+    const { check_in, check_out, jumlah_kamar, jumlah_dewasa, jumlah_anak: jlhAnak } = validation.validated()
+    const jumlah_anak = +jlhAnak // karena validation mungkin tidak auto convert ke number
 
     let maxJumlahMalam: number
     if (idSM) {
@@ -512,9 +513,19 @@ async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga:
     })
 
     // Total akan diupdate oleh trigger di database
+    // Update manual saja:
+    const totalHargaReservasi = tarifKamar.reduce((acc, item) => acc + item.harga_per_malam, 0)
+    const reservasiUpdated = await prisma.reservasi.update({
+        data: {
+            total: totalHargaReservasi
+        },
+        where: {
+            id: reservasi.id!!
+        }
+    })
 
     return {
-        reservasi,
+        reservasi: reservasiUpdated,
         kamar: reservasiRooms
     }
 }

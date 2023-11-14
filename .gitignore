@@ -9,6 +9,7 @@ dist
 
 # Dependency directories
 node_modules
+.cache
 
 # Environment variables
 .env

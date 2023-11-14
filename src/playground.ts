@@ -1,9 +1,7 @@
 import puppeteer from 'puppeteer';
 
 (async () => {
-    const browser = await puppeteer.connect({
-        browserWSEndpoint: 'wss://chrome.browserless.io/'
-    });
+    const browser = await puppeteer.launch();
     const page = await browser.newPage();
 
     // Navigate to the desired page

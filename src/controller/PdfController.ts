@@ -68,14 +68,25 @@ export default class PdfController {
             }, 404)
         }
 
+        const _browser = puppeteer.launch({
+            args: ['--no-sandbox'],
+            headless: "new"
+        })
+
+        _browser.catch((err) => {
+            console.log("Error launching browser", err)
+            return ApiResponse.error(res, {
+                message: err.message,
+                errors: null
+            }, 500)
+        })
+
+        const browser = await _browser
+
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename=TandaTerima-${reservasi.id_booking}.pdf`);
         // Force download:
         // res.setHeader('Content-Disposition', `attachment; filename=TandaTerima-${reservasi.id_booking}.pdf`);
-
-        const browser = await puppeteer.connect({
-            browserWSEndpoint: 'wss://chrome.browserless.io/'
-        });
 
         const roomsGrouped: { id_jk: number, nama_jk: string, harga_per_malam: number, jumlah_kamar: number }[] = []
         reservasi.reservasi_rooms.forEach((room) => {

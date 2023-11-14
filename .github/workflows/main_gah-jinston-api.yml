@@ -24,8 +24,8 @@ jobs:
       - name: npm install, build, and test
         run: |
           npm install yarn
-          yarn
           npm --prefix ./node_modules/puppeteer install
+          yarn
           yarn build
 
       - name: Zip artifact for deployment

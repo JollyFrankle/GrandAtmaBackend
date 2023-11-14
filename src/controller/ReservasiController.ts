@@ -109,18 +109,35 @@ async function cancelBooking(idC: number, idReservasi: number) {
         }
     })
 
+    const statusYangBolehDibatalkan = [
+        "pending-1",
+        "pending-2",
+        "pending-3",
+        "dp",
+        "lunas"
+        // kalau sudah check in tidak boleh lagi
+    ]
+
+
     if (!reservasi) {
         throw new Error("Reservasi tidak ditemukan")
     }
 
+    if (!statusYangBolehDibatalkan.includes(reservasi.status)) {
+        throw new Error("Reservasi tidak bisa dibatalkan karena statusnya sudah tidak bisa dibatalkan")
+    }
+
+    const reservasiBelumSelesai = reservasi.status.startsWith("pending-") && reservasi.tanggal_dl_booking && reservasi.tanggal_dl_booking >= new Date()
+    const reservasiSudahExpired = reservasi.status.startsWith("pending-") && reservasi.tanggal_dl_booking && reservasi.tanggal_dl_booking < new Date()
     if (
-        reservasi.status === 'batal' || reservasi.tanggal_dl_booking && reservasi.tanggal_dl_booking <= new Date()
+        reservasi.status === 'batal' || reservasiSudahExpired
     ) {
         // Bisa batal kalau sudah buat tapi belum expired
         throw new Error("Reservasi sudah batal atau kadaluarsa")
     }
 
-    if (reservasi.arrival_date < new Date() && !reservasi.status.startsWith("pending-")) {
+    const lastCODate = new Date(reservasi.departure_date.setHours(12, 0, 0, 0))
+    if (new Date() > lastCODate) {
         throw new Error("Reservasi tidak bisa dibatalkan karena sudah melewati tanggal check in")
     }
 
@@ -134,7 +151,7 @@ async function cancelBooking(idC: number, idReservasi: number) {
     })
 
     let batalMessage: string
-    if (reservasi.status.startsWith("pending-")) {
+    if (reservasiBelumSelesai) {
         batalMessage = "Reservasi yang belum selesai ini berhasil dibatalkan"
     } else if(reservasi.arrival_date > moment().add(7, 'days').toDate()) {
         batalMessage = "Reservasi berhasil dibatalkan dan uang akan dikembalikan"

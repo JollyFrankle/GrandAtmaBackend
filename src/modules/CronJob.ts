@@ -28,7 +28,7 @@ export default class CronJob {
         await prisma.reservasi.updateMany({
             where: {
                 status: {
-                    notIn: ["expired", "batal"]
+                    in: ["dp", "lunas"]
                 },
                 checked_in: null,
                 departure_date: {

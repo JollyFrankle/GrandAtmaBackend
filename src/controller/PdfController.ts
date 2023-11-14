@@ -73,10 +73,9 @@ export default class PdfController {
         // Force download:
         // res.setHeader('Content-Disposition', `attachment; filename=TandaTerima-${reservasi.id_booking}.pdf`);
 
-        const browser = await puppeteer.launch({
-            args: ['--no-sandbox'],
-            headless: "new"
-        })
+        const browser = await puppeteer.connect({
+            browserWSEndpoint: 'wss://chrome.browserless.io/'
+        });
 
         const roomsGrouped: { id_jk: number, nama_jk: string, harga_per_malam: number, jumlah_kamar: number }[] = []
         reservasi.reservasi_rooms.forEach((room) => {

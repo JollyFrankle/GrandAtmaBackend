@@ -24,7 +24,6 @@ jobs:
       - name: npm install, build, and test
         run: |
           npm install yarn
-          npm --prefix ./node_modules/puppeteer install
           yarn
           yarn build
 

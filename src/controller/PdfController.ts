@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { ApiResponse } from "../modules/ApiResponses";
 import { prisma } from "../modules/PrismaService";
-import puppeteer, { Browser } from "puppeteer-core";
+import puppeteer, { Browser } from "puppeteer";
 import hbs from "handlebars";
 import fs from "fs";
 import Utils from "../modules/Utils";

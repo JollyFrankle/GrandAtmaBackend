@@ -96,7 +96,8 @@ async function getAllBookings(idC: number, status?: string) {
             user_pegawai: true
         },
         orderBy: {
-            arrival_date: 'asc'
+            id: 'desc',
+            // arrival_date: 'asc'
         }
     })
 }

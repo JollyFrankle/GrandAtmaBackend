@@ -514,7 +514,12 @@ async function createBooking(jenisKamar: { id_jk: number, jumlah: number, harga:
 
     // Total akan diupdate oleh trigger di database
     // Update manual saja:
-    const totalHargaReservasi = tarifKamar.reduce((acc, item) => acc + item.harga_per_malam, 0)
+    let totalHargaReservasi = 0
+    tarifKamar.forEach((item) => {
+        totalHargaReservasi += item.harga_per_malam
+    })
+    totalHargaReservasi *= reservasi.jumlah_malam ?? 0
+
     const reservasiUpdated = await prisma.reservasi.update({
         data: {
             total: totalHargaReservasi
@@ -754,8 +759,20 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
         }, 400)
     }
 
+    const totalHargaKamar = ((await prisma.reservasi.findFirst({
+        where: {
+            id_customer: idC!!,
+            id: idR,
+            id_sm: idSM
+        },
+        select: {
+            total: true
+        }
+    }))?.total) ?? 0
+
     let uidGambar: string | undefined = undefined
     let status: "dp" | "lunas"
+    let jumlahDp = 0
     if (!idSM) {
         // Customer P: Menggunakan bukti gambar
         const result = await ImageUpload.handlesingleUpload("gambar", bukti)
@@ -768,19 +785,9 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
 
         uidGambar = result.data.uid
         status = "lunas" // auto set lunas
+        jumlahDp = totalHargaKamar
     } else {
         // Customer G: Menggunakan jumlah DP
-        const totalHargaKamar = ((await prisma.reservasi.findFirst({
-            where: {
-                id_customer: idC!!,
-                id: idR,
-                id_sm: idSM
-            },
-            select: {
-                total: true
-            }
-        }))?.total) ?? 0
-
         const minimalDp = totalHargaKamar / 2
 
         if (jumlah_dp < minimalDp) {
@@ -797,13 +804,15 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
         } else {
             status = "dp"
         }
+
+        jumlahDp = jumlah_dp
     }
 
     // Update reservasi: set bukti
     const reservasi = await prisma.reservasi.update({
         data: {
             bukti_transfer: uidGambar,
-            jumlah_dp: jumlah_dp,
+            jumlah_dp: jumlahDp,
             tanggal_dp: new Date(),
             status: status // auto set lunas
         },

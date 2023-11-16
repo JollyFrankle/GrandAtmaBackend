@@ -6,7 +6,7 @@
     <title>Tanda Terima</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: "Arial", sans-serif;
             font-size: 12pt;
             line-height: 1.5;
         }
@@ -80,15 +80,7 @@
 </head>
 
 <body>
-    <div class="flex gap-4 items-center" style="margin-bottom: 1rem;">
-        <img src="{{ b64Logo }}" style="width: 100px; height: fit-content; margin-right: 1rem;" />
-        <div style="flex: 1">
-            <h3>Grand Atma Hotel</h3>
-            <p>Jl. Babarsari No. 43, Caturtunggal, Depok, Sleman</p>
-            <p>Daerah Istimewa Yogyakarta 55281</p>
-            <p>Telp. (0274) 487711</p>
-        </div>
-    </div>
+    {{> kop}}
 
     <h3 class="heading">TANDA TERIMA PEMESANAN</h3>
 
@@ -98,10 +90,12 @@
                 <td style="width: 8rem">ID Booking</td>
                 <td style="font-weight: bold">{{ detail_tt.id_booking }}</td>
             </tr>
+            {{#if detail_tt.pic_sm }}
             <tr>
                 <td style="width: 8rem">PIC SM</td>
                 <td style="font-weight: bold">{{ detail_tt.pic_sm }}</td>
             </tr>
+            {{/if}}
         </table>
         <table>
             <tr>
@@ -176,10 +170,12 @@
                 <th colspan="4" class="text-end">Total</th>
                 <th class="text-end">{{ detail_tt.total_harga_kamar }}</th>
             </tr>
+            {{#if detail_tt.pic_sm }}
             <tr>
                 <td colspan="4" class="text-end">Uang Jaminan</td>
                 <td class="text-end">{{ detail_tt.uang_jaminan }}</td>
             </tr>
+            {{/if}}
     </table>
 
     <div>

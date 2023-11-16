@@ -1,23 +1,23 @@
 import { Request, Response, Router } from "express";
 import { ApiResponse } from "../modules/ApiResponses";
 import { prisma } from "../modules/PrismaService";
-import puppeteer from "puppeteer";
+import puppeteer, { Browser } from "puppeteer-core";
 import hbs from "handlebars";
 import fs from "fs";
 import Utils from "../modules/Utils";
 
+function getTemplate(name: string) {
+    const file = fs.readFileSync(`${__dirname}/../../handlebars/${name}.hbs`, 'utf-8')
+    return hbs.compile(file)
+}
+
+function getB64Image(image: string) {
+    const mime = image.split(".")[1]
+    const content = fs.readFileSync(`${__dirname}/../../public/images/${image}`, { encoding: 'base64' })
+    return `data:image/${mime};base64,${content}`
+}
+
 export default class PdfController {
-    private static getTemplate(name: string) {
-        const file = fs.readFileSync(`${__dirname}/../../handlebars/${name}.hbs`, 'utf-8')
-        return hbs.compile(file)
-    }
-
-    private static getB64Image(image: string) {
-        const mime = image.split(".")[1]
-        const content = fs.readFileSync(`${__dirname}/../../public/images/${image}`, { encoding: 'base64' })
-        return `data:image/${mime};base64,${content}`
-    }
-
     static async showPdfTandaTerima(req: Request, res: Response) {
         const { b64id } = req.params
 
@@ -68,20 +68,30 @@ export default class PdfController {
             }, 404)
         }
 
-        const _browser = puppeteer.launch({
-            args: ['--no-sandbox'],
-            headless: "new"
-        })
+        let _browser: Promise<Browser>
+        try {
+            _browser = puppeteer.launch({
+                args: ['--no-sandbox'],
+                headless: "new"
+            })
 
-        _browser.catch((err) => {
+            _browser.catch((err) => {
+                console.log("Error launching browser", err)
+                return ApiResponse.error(res, {
+                    message: err.message,
+                    errors: null
+                }, 500)
+            })
+
+        } catch (err: any) {
             console.log("Error launching browser", err)
             return ApiResponse.error(res, {
                 message: err.message,
                 errors: null
             }, 500)
-        })
-
+        }
         const browser = await _browser
+        console.log(new Date(), "THIS 1")
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename=TandaTerima-${reservasi.id_booking}.pdf`);
@@ -117,9 +127,9 @@ export default class PdfController {
         }
 
         const page = await browser.newPage()
-        const b64Logo = PdfController.getB64Image("gah-logo.webp")
+        const b64Logo = getB64Image("gah-logo.webp")
 
-        const template = PdfController.getTemplate('TandaTerimaReservasi')
+        const template = getTemplate('TandaTerimaReservasi')
         const html = template({
             detail_tt: {
                 id_booking: reservasi.id_booking,
@@ -151,6 +161,7 @@ export default class PdfController {
         })
 
         await page.setContent(html)
+
         const pdf = await page.pdf({
             format: 'A4',
             printBackground: true,
@@ -170,3 +181,5 @@ export default class PdfController {
 
 export const router = Router()
 router.get('/tanda-terima/:b64id', PdfController.showPdfTandaTerima)
+
+hbs.registerPartial('kop', getTemplate('KopHeader'))

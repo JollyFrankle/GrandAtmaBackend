@@ -18,7 +18,7 @@ export default class CronJob {
         })
 
         // Set status reservasi yang sudah lunas tetapi belum check in juga sampai jam check out menjadi batal
-        const jamCheckOut = 11 // time zone = WIB (dari process.env)
+        const jamCheckOut = 12 // time zone = WIB (dari process.env)
         let date = new Date() // today
         if (date.getHours() < jamCheckOut) {
             date.setDate(date.getDate() - 1) // yesterday

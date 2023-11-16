@@ -1,5 +1,4 @@
 import express from "express";
-import multer from "multer";
 import cors from "cors";
 import Middlewares from "./modules/Middlewares";
 import AuthController from "./controller/AuthController";
@@ -20,13 +19,13 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cors())
 
+// Public folder
+app.use("/p", express.static(`${__dirname}/../public`))
+
 // Middleware
 app.use(Middlewares.recipient)
 app.use("/customer", Middlewares.customer)
 app.use("/pegawai", Middlewares.pegawai)
-
-// Public folder
-app.use("/public", express.static(`${__dirname}/../public`))
 
 // Public routes
 app.use("/public", PDRouter)

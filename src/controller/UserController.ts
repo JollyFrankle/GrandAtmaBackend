@@ -273,7 +273,8 @@ export default class UserController {
                 email,
                 alamat,
                 password: hashedPassword,
-                password_last_changed: passwordLastChanged
+                password_last_changed: passwordLastChanged,
+                updated_at: new Date()
             }
         })
 

@@ -147,7 +147,8 @@ async function cancelBooking(idC: number, idReservasi: number) {
             id: idReservasi
         },
         data: {
-            status: 'batal'
+            status: 'batal',
+            updated_at: new Date()
         }
     })
 

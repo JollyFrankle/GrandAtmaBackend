@@ -10,6 +10,7 @@ import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./cont
 import { router as PDRouter } from "./controller/PublicDataController";
 import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP as BookingRouterP } from "./controller/BookingController";
 import { router as PdfRouter } from "./controller/PdfController";
+import { router as UserPegawaiRouter } from "./controller/UserPegawaiController";
 import getIP from "./modules/LocalNetwork";
 import CronJob from "./modules/CronJob";
 
@@ -55,6 +56,7 @@ app.use("/pegawai/fasilitas", FasilitasRouter)
 app.use("/pegawai/customer", UserRouterP)
 app.use("/pegawai/reservasi", ReservasiRouterP)
 app.use("/pegawai/booking", BookingRouterP)
+app.use("/pegawai/users", UserPegawaiRouter)
 
 // Error 404
 app.use(Middlewares.notFound)

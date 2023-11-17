@@ -648,7 +648,8 @@ async function apiStep1(req: Request, res: Response, idR: number, idC: number, i
     const reservasi = await prisma.reservasi.update({
         data: {
             permintaan_tambahan: permintaanTambahan,
-            status: "pending-2"
+            status: "pending-2",
+            updated_at: new Date()
         },
         where: {
             id_customer: idC,
@@ -705,7 +706,8 @@ async function apiStep2(req: Request, res: Response, idR: number, idC: number, i
     const reservasi = await prisma.reservasi.update({
         data: {
             id_booking: idBooking,
-            status: "pending-3"
+            status: "pending-3",
+            updated_at: new Date()
         },
         where: {
             id_customer: idC,
@@ -814,7 +816,8 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
             bukti_transfer: uidGambar,
             jumlah_dp: jumlahDp,
             tanggal_dp: new Date(),
-            status: status // auto set lunas
+            status: status,
+            updated_at: new Date()
         },
         where: {
             id_customer: idC!!,

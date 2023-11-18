@@ -118,4 +118,11 @@ export default class Middlewares {
             errors: null
         }, 404)
     }
+
+    static async ping(_: Request, res: Response) {
+        return ApiResponse.success(res, {
+            message: "Pong",
+            data: null
+        })
+    }
 }

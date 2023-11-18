@@ -91,7 +91,6 @@ export default class PdfController {
             }, 500)
         }
         const browser = await _browser
-        console.log(new Date(), "THIS 1")
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename=TandaTerima-${reservasi.id_booking}.pdf`);

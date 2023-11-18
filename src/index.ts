@@ -11,6 +11,7 @@ import { router as PDRouter } from "./controller/PublicDataController";
 import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP as BookingRouterP } from "./controller/BookingController";
 import { router as PdfRouter } from "./controller/PdfController";
 import { router as UserPegawaiRouter } from "./controller/UserPegawaiController";
+import { router as routerCICO } from "./controller/CheckInOutController";
 import getIP from "./modules/LocalNetwork";
 import CronJob from "./modules/CronJob";
 
@@ -57,9 +58,13 @@ app.use("/pegawai/customer", UserRouterP)
 app.use("/pegawai/reservasi", ReservasiRouterP)
 app.use("/pegawai/booking", BookingRouterP)
 app.use("/pegawai/users", UserPegawaiRouter)
+app.use("/pegawai/fo", routerCICO)
 
 // Error 404
 app.use(Middlewares.notFound)
+
+// Ping
+app.get("/ping", Middlewares.ping)
 
 app.listen(process.env.PORT, () => {
     const localIP = getIP()

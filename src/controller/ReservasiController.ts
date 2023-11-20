@@ -33,7 +33,7 @@ async function getAllBookings(idC: number, status?: string) {
                 },
                 {
                     // tanggal check out masih di masa depan
-                    arrival_date: {
+                    departure_date: {
                         gte: new Date(new Date().setHours(0, 0, 0, 0))
                     }
                 }
@@ -217,16 +217,8 @@ export default class ReservasiController {
     }
 
     static async showP(req: PegawaiRequest, res: Response) {
-        if (!Authentication.authorization(req, ['sm'])) {
+        if (!Authentication.authorization(req, ['sm', 'owner', 'fo'])) {
             return Authentication.defaultUnauthorizedResponse(res)
-        }
-
-        const user = req.data!!.user
-        if (!['sm', 'owner'].includes(user.role)) {
-            return ApiResponse.error(res, {
-                message: "Hanya pegawai Sales & Marketing yang bisa mengakses halaman ini",
-                errors: null
-            }, 403)
         }
 
         const { idC, id } = req.params // id reservasi
@@ -273,14 +265,6 @@ export default class ReservasiController {
     static async cancelP(req: PegawaiRequest, res: Response) {
         if (!Authentication.authorization(req, ['sm'])) {
             return Authentication.defaultUnauthorizedResponse(res)
-        }
-
-        const user = req.data!!.user
-        if (!['sm', 'owner'].includes(user.role)) {
-            return ApiResponse.error(res, {
-                message: "Hanya pegawai Sales & Marketing yang bisa mengakses halaman ini",
-                errors: null
-            }, 403)
         }
 
         const { idC, id } = req.params // id reservasi

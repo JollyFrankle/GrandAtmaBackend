@@ -24,6 +24,7 @@ jobs:
       - name: install all dependencies
         run: |
           npm install
+          npm run install-puppeteer
           npm run build
 
       - name: Zip artifact for deployment

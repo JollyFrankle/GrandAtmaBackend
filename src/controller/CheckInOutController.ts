@@ -13,10 +13,17 @@ interface KamarAvailibility {
     status: 'TSD' | 'TRS' | 'COT' | 'UNV'
 }
 
-async function getKeterisianKamarHariIni(noLantai?: number) {
+interface CheckInKamar {
+    id_rr: number,
+    no_kamar: number,
+    new_id_jk: number | null
+}
+
+async function getKeterisianKamarHariIni(noLantai?: number, idJK?: number) {
     const listKamar = await prisma.kamar.findMany({
         where: {
-            no_lantai: noLantai
+            no_lantai: noLantai,
+            id_jenis_kamar: idJK
         },
         orderBy: [
             {
@@ -84,20 +91,57 @@ async function getKeterisianKamarHariIni(noLantai?: number) {
     return availibility
 }
 
+function getTanggalCheckInHariIni() {
+    // tanggal check in = kemarin kalau < 12.00, hari ini kalau >= 12.00
+    const jamCheckOut = 12
+    const hariIni = moment()
+    if (hariIni.hour() < jamCheckOut) {
+        hariIni.subtract(1, 'day')
+    }
+
+    return hariIni.set({
+        h: 14,
+        m: 0,
+        s: 0,
+        ms: 0
+    }).toDate()
+}
+
+function getTanggalCheckOutHariIni() {
+    // tanggal check out = hari ini kalau < 12.00, besok kalau >= 12.00
+    const jamCheckOut = 12
+    const hariIni = moment()
+    if (hariIni.hour() >= jamCheckOut) {
+        hariIni.add(1, 'day')
+    }
+
+    return hariIni.set({
+        h: 12,
+        m: 0,
+        s: 0,
+        ms: 0
+    }).toDate()
+}
+
 export default class CheckInOutController {
     static async getListKetersediaanCurrently(req: PegawaiRequest, res: Response) {
         if (!Authentication.authorization(req, ['fo'])) {
             return Authentication.defaultUnauthorizedResponse(res)
         }
 
-        const { no_lantai } = req.query
+        const { no_lantai, id_jk } = req.query
 
         let noLantai: number | undefined = undefined
+        let idJK: number | undefined = undefined
         if (no_lantai && (+no_lantai) >= 1 && (+no_lantai) <= 4) {
             noLantai = +no_lantai
         }
 
-        const availibility = await getKeterisianKamarHariIni(noLantai)
+        if (id_jk && (+id_jk) >= 1 && (+id_jk) <= 4) {
+            idJK = +id_jk
+        }
+
+        const availibility = await getKeterisianKamarHariIni(noLantai, idJK)
 
         return ApiResponse.success(res, {
             message: 'Berhasil mendapatkan data ketersediaan kamar',
@@ -111,17 +155,18 @@ export default class CheckInOutController {
             return Authentication.defaultUnauthorizedResponse(res)
         }
 
-        const roomsToday = await prisma.reservasi.findMany({
+        const tglHariIni = getTanggalCheckInHariIni()
+        const reservasi = await prisma.reservasi.findMany({
             where: {
                 status: {
                     in: ['lunas', 'dp'] // hanya yg sudah lunas/DP yang boleh check in
                 },
                 checked_in: null, // kalau sudah check in, tidak boleh check in lagi
                 arrival_date: {
-                    lte: new Date() // arrival hari ini atau kemarin boleh check in (kalau sudah > jam check out auto diset BATAL: ditangani cron job)
+                    lte: tglHariIni // arrival hari ini atau kemarin boleh check in (kalau sudah > jam check out auto diset BATAL: ditangani cron job)
                 },
                 departure_date: {
-                    gt: new Date() // departure hari ini atau <= kemarin boleh check out (kalau sudah > jam check out auto diset BATAL, ditangani cron job)
+                    gt: tglHariIni // departure hari ini atau <= kemarin boleh check out (kalau sudah > jam check out auto diset BATAL, ditangani cron job)
                 }
             },
             orderBy: {
@@ -134,7 +179,10 @@ export default class CheckInOutController {
 
         return ApiResponse.success(res, {
             message: 'Berhasil mendapatkan data check in hari ini',
-            data: roomsToday
+            data: {
+                tanggal: tglHariIni,
+                reservasi: reservasi
+            }
         })
     }
 
@@ -144,11 +192,12 @@ export default class CheckInOutController {
             return Authentication.defaultUnauthorizedResponse(res)
         }
 
-        const roomsToday = await prisma.reservasi.findMany({
+        const tglHariIni = getTanggalCheckOutHariIni()
+        const reservasi = await prisma.reservasi.findMany({
             where: {
                 status: 'checkin', // kalau statusnya masih checkin, berarti belum check out
                 departure_date: {
-                    lte: new Date() // departure hari ini atau <= kemarin boleh check out (kalau sudah > jam check out auto diset BATAL, ditangani cron job)
+                    lte: tglHariIni // departure hari ini atau <= kemarin boleh check out (kalau sudah > jam check out auto diset BATAL, ditangani cron job)
                 }
             },
             orderBy: {
@@ -161,7 +210,10 @@ export default class CheckInOutController {
 
         return ApiResponse.success(res, {
             message: 'Berhasil mendapatkan data check out hari ini',
-            data: roomsToday
+            data: {
+                tanggal: tglHariIni,
+                reservasi: reservasi
+            }
         })
     }
 
@@ -171,14 +223,12 @@ export default class CheckInOutController {
             return Authentication.defaultUnauthorizedResponse(res)
         }
 
-        const roomsToday = await prisma.reservasi_rooms.findMany({
+        const roomsToday = await prisma.reservasi.findMany({
             where: {
-                reservasi: {
-                    status: 'checkin' // kalau statusnya masih checkin, berarti masih menginap
-                }
+                status: 'checkin' // kalau statusnya masih checkin, berarti masih menginap
             },
             include: {
-                reservasi: true
+                user_customer: true
             }
         })
 
@@ -199,19 +249,53 @@ export default class CheckInOutController {
                 type: 'number',
                 min: 300000
             },
-            no_kamar: {
+            kamar: {
                 required: true,
                 type: "array",
-                customRule: (value: any[]) => {
-                    if (value.length === 0) {
-                        return 'No kamar harus diisi'
-                    }
+                customRule: (value) => {
+                    const rooms = value as CheckInKamar[]
 
-                    return null
-
+                    return rooms.filter((it) => !it.id_rr || !it.no_kamar || typeof it.new_id_jk === "undefined").length > 0 ? 'Request malformed untuk kamar!' : null
                 }
             }
         })
+
+        if (validation.fails()) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: validation.errors
+            }, 422)
+        }
+
+        const { id, deposit, kamar } = validation.validated()
+        const rooms = kamar as CheckInKamar[]
+
+        const reservasi = await prisma.reservasi.findUnique({
+            where: {
+                id: id,
+                status: {
+                    in: ["lunas", "dp"]
+                }
+            },
+            include: {
+                user_customer: true,
+                reservasi_rooms: true // get semua kamar yang dipessan
+            }
+        })
+
+        if (!reservasi) {
+            return ApiResponse.error(res, {
+                message: "Reservasi tidak ditemukan atau tidak bisa di-check in",
+                errors: null
+            }, 404)
+        }
+
+        // Cek apakah semua kamar sudah dipilih:
+        const reservasiRooms = reservasi.reservasi_rooms
+        const kamarBelumDipilih = reservasiRooms.filter((rr) => !rooms.find((it) => it.id_rr === rr.id))
+
+        const ketersediaanSaatIni = await getKeterisianKamarHariIni()
+        // for ()
     }
 }
 

@@ -850,7 +850,12 @@ async function getCurrentStage(idR: number, idSM?: number) {
 }
 
 function getCurrentDate(plusDays?: number) {
-    return moment().set("hour", 0).set("minute", 0).set("second", 0).set("millisecond", 0).add(plusDays, "days").toDate()
+    return moment().set({
+        h: 0,
+        m: 0,
+        s: 0,
+        ms: 0
+    }).add(plusDays, "days").toDate()
 }
 
 export default class BookingController {

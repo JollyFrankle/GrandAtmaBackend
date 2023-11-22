@@ -1,4 +1,7 @@
 export default class Utils {
+    static JAM_CHECK_IN = 14
+    static JAM_CHECK_OUT = 12
+
     static dateFormatFull = new Intl.DateTimeFormat('id-ID', {
         dateStyle: 'full',
         timeStyle: 'long'

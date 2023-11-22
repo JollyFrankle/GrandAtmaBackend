@@ -228,7 +228,7 @@ export default class ReservasiController {
                 id: +id,
                 id_customer: +idC,
                 user_customer: {
-                    type: 'g' // hanya tampilkan kalau group request bukan individual
+                    type: req.data?.user.role === 'sm' ? 'g' : undefined // hanya tampilkan group kalau SM. FO butuh semua
                 }
             },
             include: {

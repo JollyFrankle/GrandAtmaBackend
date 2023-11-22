@@ -1,4 +1,5 @@
 import { prisma } from "./PrismaService";
+import Utils from "./Utils";
 
 export default class CronJob {
     private static async cronUpdateStatusReservasi() {
@@ -18,7 +19,7 @@ export default class CronJob {
         })
 
         // Set status reservasi yang sudah lunas tetapi belum check in juga sampai jam check out menjadi batal
-        const jamCheckOut = 12 // time zone = WIB (dari process.env)
+        const jamCheckOut = Utils.JAM_CHECK_OUT // time zone = WIB (dari process.env)
         let date = new Date() // today
         if (date.getHours() < jamCheckOut) {
             date.setDate(date.getDate() - 1) // yesterday
@@ -30,7 +31,6 @@ export default class CronJob {
                 status: {
                     in: ["dp", "lunas"]
                 },
-                checked_in: null,
                 departure_date: {
                     lt: date
                 }

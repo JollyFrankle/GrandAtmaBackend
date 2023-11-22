@@ -1,6 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["debian-openssl-3.0.x"]
+  binaryTargets = ["debian-openssl-3.0.x", "windows"]
 }
 
 datasource db {
@@ -81,8 +81,6 @@ model reservasi {
   id_booking          String?             @unique(map: "id_booking") @db.VarChar(20)
   arrival_date        DateTime            @db.Date
   departure_date      DateTime            @db.Date
-  checked_in          DateTime?           @db.Timestamp(0)
-  checked_out         DateTime?           @db.Timestamp(0)
   jumlah_malam        Int?                @db.UnsignedTinyInt
   jumlah_dewasa       Int                 @default(0) @db.UnsignedTinyInt
   jumlah_anak         Int                 @default(0) @db.UnsignedTinyInt
@@ -91,7 +89,6 @@ model reservasi {
   jumlah_dp           Int?
   status              String              @db.VarChar(10)
   total               Int                 @default(0) @db.UnsignedInt
-  deposit             Int?                @db.UnsignedInt
   permintaan_tambahan String?             @db.Text
   bukti_transfer      String?             @db.Char(36)
   created_at          DateTime            @default(now()) @db.Timestamp(0)
@@ -100,6 +97,7 @@ model reservasi {
   user_customer       user_customer       @relation(fields: [id_customer], references: [id], onDelete: Cascade, map: "reservasi_ibfk_1")
   user_pegawai        user_pegawai?       @relation(fields: [id_sm], references: [id], onDelete: Cascade, map: "reservasi_ibfk_2")
   images              images?             @relation(fields: [bukti_transfer], references: [uid], map: "reservasi_ibfk_3")
+  reservasi_cico      reservasi_cico?
   reservasi_layanan   reservasi_layanan[]
   reservasi_rooms     reservasi_rooms[]
 
@@ -190,15 +188,16 @@ model user_customer {
 }
 
 model user_pegawai {
-  id         Int         @id @default(autoincrement()) @db.UnsignedInt
-  role       String
-  nama       String      @db.VarChar(100)
-  email      String      @unique(map: "username") @db.VarChar(100)
-  password   String      @db.VarChar(100)
-  created_at DateTime    @default(now()) @db.Timestamp(0)
-  updated_at DateTime    @default(now()) @db.Timestamp(0)
-  invoice    invoice[]
-  reservasi  reservasi[]
+  id             Int              @id @default(autoincrement()) @db.UnsignedInt
+  role           String
+  nama           String           @db.VarChar(100)
+  email          String           @unique(map: "username") @db.VarChar(100)
+  password       String           @db.VarChar(100)
+  created_at     DateTime         @default(now()) @db.Timestamp(0)
+  updated_at     DateTime         @default(now()) @db.Timestamp(0)
+  invoice        invoice[]
+  reservasi      reservasi[]
+  reservasi_cico reservasi_cico[]
 }
 
 model tokens {
@@ -219,6 +218,22 @@ model images {
   jenis_kamar      jenis_kamar[]
   layanan_tambahan layanan_tambahan[]
   reservasi        reservasi[]
+  reservasi_cico   reservasi_cico[]
+}
+
+model reservasi_cico {
+  id_reservasi     Int          @id @db.UnsignedInt
+  id_fo            Int          @db.UnsignedInt
+  checked_in_at    DateTime     @default(now()) @db.Timestamp(0)
+  checked_out_at   DateTime?    @db.Timestamp(0)
+  gambar_identitas String       @db.Char(36)
+  deposit          Int          @default(0) @db.UnsignedInt
+  reservasi        reservasi    @relation(fields: [id_reservasi], references: [id], onDelete: Cascade, map: "reservasi_cico_ibfk_1")
+  user_pegawai     user_pegawai @relation(fields: [id_fo], references: [id], map: "reservasi_cico_ibfk_2")
+  images           images       @relation(fields: [gambar_identitas], references: [uid], map: "reservasi_cico_ibfk_3")
+
+  @@index([id_fo], map: "id_fo")
+  @@index([gambar_identitas], map: "gambar_identitas")
 }
 
 enum user_customer_type {

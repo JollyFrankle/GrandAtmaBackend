@@ -110,15 +110,18 @@ model reservasi_layanan {
   id               Int              @id @default(autoincrement()) @db.UnsignedInt
   id_reservasi     Int              @db.UnsignedInt
   id_layanan       Int              @db.UnsignedTinyInt
+  id_fo            Int?             @db.UnsignedInt
   tanggal_pakai    DateTime         @default(now()) @db.Timestamp(0)
   qty              Int              @db.UnsignedTinyInt
   total            Int              @db.UnsignedInt
   created_at       DateTime         @default(now()) @db.Timestamp(0)
   layanan_tambahan layanan_tambahan @relation(fields: [id_layanan], references: [id], onDelete: Cascade, map: "reservasi_layanan_ibfk_1")
   reservasi        reservasi        @relation(fields: [id_reservasi], references: [id], onDelete: Cascade, map: "reservasi_layanan_ibfk_2")
+  user_pegawai     user_pegawai?    @relation(fields: [id_fo], references: [id], map: "reservasi_layanan_ibfk_3")
 
   @@index([id_layanan], map: "id_layanan")
   @@index([id_reservasi], map: "id_reservasi")
+  @@index([id_fo], map: "id_fo")
 }
 
 model reservasi_logs {
@@ -188,16 +191,17 @@ model user_customer {
 }
 
 model user_pegawai {
-  id             Int              @id @default(autoincrement()) @db.UnsignedInt
-  role           String
-  nama           String           @db.VarChar(100)
-  email          String           @unique(map: "username") @db.VarChar(100)
-  password       String           @db.VarChar(100)
-  created_at     DateTime         @default(now()) @db.Timestamp(0)
-  updated_at     DateTime         @default(now()) @db.Timestamp(0)
-  invoice        invoice[]
-  reservasi      reservasi[]
-  reservasi_cico reservasi_cico[]
+  id                Int                 @id @default(autoincrement()) @db.UnsignedInt
+  role              String
+  nama              String              @db.VarChar(100)
+  email             String              @unique(map: "username") @db.VarChar(100)
+  password          String              @db.VarChar(100)
+  created_at        DateTime            @default(now()) @db.Timestamp(0)
+  updated_at        DateTime            @default(now()) @db.Timestamp(0)
+  invoice           invoice[]
+  reservasi         reservasi[]
+  reservasi_cico    reservasi_cico[]
+  reservasi_layanan reservasi_layanan[]
 }
 
 model tokens {
@@ -234,6 +238,13 @@ model reservasi_cico {
 
   @@index([id_fo], map: "id_fo")
   @@index([gambar_identitas], map: "gambar_identitas")
+}
+
+model settings {
+  opt_key    String   @id @db.VarChar(20)
+  value      String   @db.TinyText
+  opt_desc   String   @db.TinyText
+  updated_at DateTime @default(now()) @db.Timestamp(0)
 }
 
 enum user_customer_type {

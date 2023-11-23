@@ -8,6 +8,8 @@ import Authentication from "../modules/Authentication";
 import moment from "moment-timezone";
 import Utils from "../modules/Utils";
 import ImageUpload, { multerUploadDest } from "../modules/ImageUpload";
+import Settings from "../modules/Settings";
+import { generateIdInvoice } from "../modules/IdGenerator";
 
 interface KamarAvailibility {
     no_kamar: string,
@@ -20,7 +22,7 @@ interface KamarAvailibility {
         smoking: boolean,
         bed: string
     },
-    status: 'TSD' | 'TRS' | 'COT' | 'UNV'
+    status: 'TSD' | 'TRS' | 'COT' | 'UNV' | 'OVS'
 }
 
 interface CheckInKamar {
@@ -68,6 +70,7 @@ async function getKeterisianKamarHariIni(noLantai?: number, idJK?: number) {
      * TRS = Terisi
      * COT = Check Out Today
      * UNV = Unavailable
+     * OVS = Overstay
      */
     const availibility: KamarAvailibility[] = []
     const idCustomerMaintenance = 0 // ID customer kalau kamar sedang maintenance
@@ -84,8 +87,13 @@ async function getKeterisianKamarHariIni(noLantai?: number, idJK?: number) {
                 status = 'UNV'
             }
 
-            if (moment(reservasi.departure_date).isSame(moment(), 'day')) {
-                status = 'COT'
+            const momentDeparture = moment(reservasi.departure_date)
+            if (momentDeparture.isSameOrBefore(moment(), 'day')) {
+                if (moment().hour() >= Utils.JAM_CHECKIN || momentDeparture.isBefore(moment(), 'day')) { // toleransi sampai jam 14.00 (jam mulai check in untuk hari ini)
+                    status = 'OVS'
+                } else {
+                    status = 'COT'
+                }
             }
         }
 
@@ -109,9 +117,9 @@ async function getKeterisianKamarHariIni(noLantai?: number, idJK?: number) {
 
 function getTanggalCheckInHariIni() {
     // tanggal check in = kemarin kalau < 12.00, hari ini kalau >= 12.00
-    const jamCI = Utils.JAM_CHECK_IN
+    const jamCI = Utils.JAM_CHECKIN
     const hariIni = moment()
-    if (hariIni.hour() < Utils.JAM_CHECK_OUT) {
+    if (hariIni.hour() < Utils.JAM_CHECKOUT) {
         hariIni.subtract(1, 'day')
     }
 
@@ -125,9 +133,9 @@ function getTanggalCheckInHariIni() {
 
 function getTanggalCheckOutHariIni() {
     // tanggal check out = hari ini kalau < 14.00, besok kalau >= 14.00
-    const jamCO = Utils.JAM_CHECK_OUT
+    const jamCO = Utils.JAM_CHECKOUT
     const hariIni = moment()
-    if (hariIni.hour() >= Utils.JAM_CHECK_IN) {
+    if (hariIni.hour() >= Utils.JAM_CHECKIN) {
         hariIni.add(1, 'day')
     }
 
@@ -262,6 +270,31 @@ export default class CheckInOutController {
 
         return ApiResponse.success(res, {
             message: 'Berhasil mendapatkan data tamu yang sedang menginap',
+            data: roomsToday
+        })
+    }
+
+    // List tamu yang status = selesai
+    static async getListTamuCheckedOut(req: PegawaiRequest, res: Response) {
+        if (!Authentication.authorization(req, ['fo'])) {
+            return Authentication.defaultUnauthorizedResponse(res)
+        }
+
+        const roomsToday = await prisma.reservasi.findMany({
+            where: {
+                status: 'selesai' // kalau statusnya selesai, berarti sudah check out
+            },
+            include: {
+                user_customer: true,
+                invoice: true
+            },
+            orderBy: {
+                departure_date: 'desc'
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: 'Berhasil mendapatkan data tamu yang sudah check out',
             data: roomsToday
         })
     }
@@ -417,6 +450,239 @@ export default class CheckInOutController {
             })
         }
     }
+
+    static async pesanLayanan(req: PegawaiRequest, res: Response) {
+        const idReservasi = +req.params.id
+
+        const validation = Validation.body(req, {
+            layanan: {
+                required: true,
+                customRule: (value) => {
+                    let layanan = value as { id: number, qty: number }[]
+
+                    return layanan.filter((it) => !(+it.id) || !(+it.qty)).length > 0 ? 'Request malformed untuk layanan!' : null
+                }
+            }
+        })
+
+        if (validation.fails()) {
+            return ApiResponse.error(res, {
+                message: "Validasi gagal",
+                errors: validation.errors
+            }, 422)
+        }
+
+        const { layanan: _lay } = validation.validated()
+        const layanan = _lay as { id: number, qty: number }[]
+
+        const reservasi = await prisma.reservasi.findUnique({
+            where: {
+                id: idReservasi,
+                status: 'checkin'
+            }
+        })
+
+        if (!reservasi) {
+            return ApiResponse.error(res, {
+                message: "Reservasi tidak ditemukan atau sudah tidak bisa lagi memesan layanan",
+                errors: null
+            }, 404)
+        }
+
+        // Validate layanan
+        const listLayanan = await prisma.layanan_tambahan.findMany({
+            where: {
+                id: {
+                    in: layanan.map((it) => it.id)
+                }
+            }
+        })
+
+        if (listLayanan.length !== layanan.length) {
+            return ApiResponse.error(res, {
+                message: "Ada layanan yang tidak ditemukan",
+                errors: null
+            }, 404)
+        }
+
+        // Add layanan ke table reservasi_layanan
+        await prisma.reservasi_layanan.createMany({
+            data: layanan.map((it) => ({
+                id_reservasi: idReservasi,
+                id_layanan: it.id,
+                id_fo: req.data?.user?.id!!,
+                tanggal_pakai: new Date(),
+                qty: it.qty,
+                total: listLayanan.find((lay) => lay.id === it.id)?.tarif!! * it.qty
+            }))
+        })
+
+        return ApiResponse.success(res, {
+            message: "Berhasil memesan layanan",
+            data: null
+        })
+    }
+
+    static async catatanKeuangan(req: PegawaiRequest, res: Response) {
+        const idReservasi = +req.params.id
+
+        const reservasi = await prisma.reservasi.findUnique({
+            where: {
+                id: idReservasi,
+                status: 'checkin'
+            },
+            include: {
+                reservasi_rooms: {
+                    include: {
+                        jenis_kamar: true
+                    }
+                },
+                reservasi_layanan: {
+                    include: {
+                        layanan_tambahan: true
+                    }
+                },
+                reservasi_cico: true
+            }
+        })
+
+        if (!reservasi) {
+            return ApiResponse.error(res, {
+                message: "Reservasi tidak ditemukan",
+                errors: null
+            }, 404)
+        }
+
+        // Grouping
+        const kamarGrouped: { id: number, jenis_kamar: string, amount: number, harga: number }[] = []
+        reservasi.reservasi_rooms.map((item) => {
+            const existing = kamarGrouped.find((i) => i.id === item.id_jenis_kamar)
+            if (existing) {
+                existing.amount += 1
+            } else {
+                kamarGrouped.push({
+                    id: item.id_jenis_kamar,
+                    jenis_kamar: item.jenis_kamar.nama,
+                    amount: 1,
+                    harga: item.harga_per_malam
+                })
+            }
+        })
+
+        // @ts-ignore
+        delete reservasi.reservasi_rooms
+
+        const pajakLayanan = +(await Settings.get('PAJAK_LAYANAN'))
+
+        return ApiResponse.success(res, {
+            message: "Berhasil mendapatkan data",
+            data: {
+                reservasi: reservasi,
+                kamar: kamarGrouped,
+                pajak_layanan_perc: pajakLayanan
+            }
+        })
+    }
+
+    static async checkOut(req: PegawaiRequest, res: Response) {
+        const idReservasi = +req.params.id
+
+        const validation = Validation.body(req, {
+            total_dibayar: {
+                required: true,
+                type: 'number'
+            }
+        })
+
+        if (validation.fails()) {
+            return ApiResponse.error(res, {
+                message: "Total dibayar harus diisi",
+                errors: validation.errors
+            }, 422)
+        }
+
+        const { total_dibayar } = validation.validated()
+
+        const reservasi = await prisma.reservasi.findUnique({
+            where: {
+                id: idReservasi,
+                status: 'checkin'
+            },
+            include: {
+                reservasi_rooms: {
+                    include: {
+                        jenis_kamar: true
+                    }
+                },
+                reservasi_layanan: {
+                    include: {
+                        layanan_tambahan: true
+                    }
+                },
+                reservasi_cico: true,
+                user_customer: true
+            }
+        })
+
+        if (!reservasi) {
+            return ApiResponse.error(res, {
+                message: "Reservasi tidak ditemukan",
+                errors: null
+            }, 404)
+        }
+
+        // Total
+        const totalKamar = reservasi.total
+        const totalLayanan = reservasi.reservasi_layanan.reduce((acc, it) => acc + it.total, 0)
+        const pajakLayanan = +(await Settings.get('PAJAK_LAYANAN')) * totalLayanan
+        const total = totalKamar + totalLayanan + pajakLayanan
+
+        const uangMuka = reservasi.jumlah_dp ?? 0
+        const deposit = reservasi.reservasi_cico?.deposit ?? 0
+        const terbayar = uangMuka + deposit
+
+        const selisih = total - terbayar
+
+        if (+total_dibayar !== selisih) {
+            return ApiResponse.error(res, {
+                message: "Uang yang dibayar/dikembalikan tidak sesuai. Jika seharusnya sudah sesuai, coba refresh halaman.",
+                errors: null
+            }, 422)
+        }
+
+        // Insert ke invoice
+        const noInvoice = await generateIdInvoice(reservasi.user_customer.type.toUpperCase() as 'G' | 'P')
+        const invoice = await prisma.invoice.create({
+            data: {
+                id_reservasi: idReservasi,
+                id_fo: req.data?.user?.id!!,
+                no_invoice: noInvoice,
+                tanggal_lunas: new Date(),
+                total_kamar: totalKamar,
+                total_layanan: totalLayanan,
+                pajak_layanan: pajakLayanan,
+                grand_total: total
+            }
+        })
+
+        // Update status reservasi menjadi selesai
+        await prisma.reservasi.update({
+            where: {
+                id: reservasi.id
+            },
+            data: {
+                status: "selesai"
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: `Berhasil melakukan check out dan membuat invoice ${noInvoice}`,
+            data: {
+                invoice: invoice,
+                reservasi: reservasi
+            }
+        })
+    }
 }
 
 export const router = Router()
@@ -424,4 +690,8 @@ router.get('/ketersediaan', CheckInOutController.getListKetersediaanCurrently)
 router.get('/checkin', CheckInOutController.getListCheckInToday)
 router.get('/checkout', CheckInOutController.getListCheckOutToday)
 router.get('/menginap', CheckInOutController.getListTamuMenginap)
+router.get('/checkedout', CheckInOutController.getListTamuCheckedOut)
 router.post('/checkin/:id', multerUploadDest.single('gambar_identitas'), CheckInOutController.checkIn)
+router.post('/pesan-layanan/:id', CheckInOutController.pesanLayanan)
+router.get('/catatan-keuangan/:id', CheckInOutController.catatanKeuangan)
+router.post('/checkout/:id', CheckInOutController.checkOut)

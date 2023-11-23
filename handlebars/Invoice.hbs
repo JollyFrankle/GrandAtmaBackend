@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Nota Lunas/Invoice</title>
+    <style>
+        body {
+            font-family: "Arial", sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+        }
+
+        .flex {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .justify-end {
+            justify-content: flex-end;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .items-top {
+            align-items: flex-start;
+        }
+
+        .gap-4 {
+            gap: 1rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-end {
+            text-align: end;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6,
+        p {
+            margin: 0;
+        }
+
+        .table-bordered {
+            border-collapse: collapse;
+            border: 1px solid #6c757d;
+            width: 100%;
+        }
+
+        .table-bordered td,
+        .table-bordered th {
+            border: 1px solid #6c757d;
+            padding: .25rem .5rem;
+        }
+
+        .heading {
+            border-top: 1px solid #6c757d;
+            padding: .25rem 0;
+            text-align: center;
+            border-bottom: 1px solid #6c757d;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    {{> kop}}
+
+    <h3 class="heading">INVOICE</h3>
+
+    <div class="flex gap-4 justify-end mb-4 items-top">
+        <table>
+            <tr>
+                <td style="width: 8rem">Tanggal</td>
+                <td style="font-weight: bold">{{ detail_inv.tanggal }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">No. Invoice</td>
+                <td style="font-weight: bold">{{ detail_inv.no_invoice }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Front Office</td>
+                <td style="font-weight: bold">{{ detail_inv.nama_fo }}</td>
+            </tr>
+        </table>
+    </div>
+    <div class="mb-4">
+        <table>
+            <tr>
+                <td style="width: 8rem">ID Booking</td>
+                <td style="font-weight: bold">{{ detail_tt.id_booking }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Nama</td>
+                <td style="font-weight: bold">{{ detail_tt.nama_customer }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Alamat</td>
+                <td style="font-weight: bold">{{ detail_tt.alamat_customer }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <h3 class="heading">DETAIL PEMESANAN</h3>
+    <div class="mb-4">
+        <table>
+            <tr>
+                <td style="width: 8rem">Check In</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.check_in }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Check Out</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.check_out }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Dewasa</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.jumlah_dewasa }}</td>
+            </tr>
+            <tr>
+                <td style="width: 8rem">Anak-anak</td>
+                <td style="font-weight: bold">{{ detail_pemesanan.jumlah_anak }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <h3 class="heading">KAMAR</h3>
+    <table class="table-bordered mb-4">
+        <thead>
+            <tr>
+                <th style="width: 40%">Jenis Kamar</th>
+                <th style="width: 10%">Bed</th>
+                <th style="width: 7.5%">Jumlah Malam</th>
+                <th style="width: 7.5">Jumlah Kamar</th>
+                <th style="width: 15%">Harga</th>
+                <th style="width: 20%">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each kamar}}
+            <tr>
+                <td>{{ jenis_kamar }}</td>
+                <td>{{ jenis_bed }}</td>
+                <td class="text-center">{{ jumlah_malam }}</td>
+                <td class="text-center">{{ jumlah_kamar }}</td>
+                <td class="text-end">{{ harga }}</td>
+                <td class="text-end">{{ total }}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="5" class="text-end">Total</th>
+                <th class="text-end">{{ detail_tt.total_harga_kamar }}</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    {{#if layanan }}
+    <h3 class="heading">LAYANAN</h3>
+    <table class="table-bordered mb-4">
+        <thead>
+            <tr>
+                <th style="width: 30%">Layanan</th>
+                <th style="width: 25%">Tanggal</th>
+                <th style="width: 10%">Jumlah</th>
+                <th style="width: 15%">Harga</th>
+                <th style="width: 20%">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each layanan}}
+            <tr>
+                <td>{{ nama }}</td>
+                <td>{{ tanggal }}</td>
+                <td class="text-center">{{ jumlah }}</td>
+                <td class="text-end">{{ harga }}</td>
+                <td class="text-end">{{ total }}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="4" class="text-end">Pajak</th>
+                <th class="text-end">{{ detail_inv.pajak_layanan }}</th>
+            </tr>
+            <tr>
+                <th colspan="4" class="text-end">Total</th>
+                <th class="text-end">{{ detail_inv.total_layanan }}</th>
+            </tr>
+        </tfoot>
+    </table>
+    {{/if}}
+
+    <div style="width: fit-content; margin-left: auto; margin-bottom: 1rem">
+        <table>
+            <tr>
+                <td style="font-weight: bold; width: 10rem">TOTAL</td>
+                <td style="font-weight: bold">{{ detail_inv.grand_total }}</td>
+            </tr>
+            <tr>
+                <td style="width: 10rem">Jaminan</td>
+                <td style="font-weight: bold">{{ detail_tt.uang_jaminan }}</td>
+            </tr>
+            <tr>
+                <td style="width: 10rem">Deposit</td>
+                <td style="font-weight: bold">{{ detail_tt.deposit }}</td>
+            </tr>
+            {{#if kembalian }}
+            <tr>
+                <td style="font-weight: bold; width: 10rem">Dikembalikan</td>
+                <td style="font-weight: bold">{{ kembalian }}</td>
+            </tr>
+            {{/if}}
+            {{#if kekurangan }}
+            <tr>
+                <td style="font-weight: bold; width: 10rem">Cash</td>
+                <td style="font-weight: bold">{{ kekurangan }}</td>
+            </tr>
+            {{/if}}
+        </table>
+    </div>
+
+    <div class="text-center mt-4">
+        <p>Terima kasih atas kunjungan Anda</p>
+        <p>Semoga Anda senang dan nyaman selama menginap di hotel kami</p>
+    </div>
+
+</body>
+
+</html>

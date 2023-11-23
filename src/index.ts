@@ -9,11 +9,12 @@ import { routerC as UserRouterC, routerP as UserRouterP } from "./controller/Use
 import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./controller/ReservasiController";
 import { router as PDRouter } from "./controller/PublicDataController";
 import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP as BookingRouterP } from "./controller/BookingController";
-import { router as PdfRouter } from "./controller/PdfController";
+import PdfController, { router as PdfRouter } from "./controller/PdfController";
 import { router as UserPegawaiRouter } from "./controller/UserPegawaiController";
 import { router as routerCICO } from "./controller/CheckInOutController";
 import getIP from "./modules/LocalNetwork";
 import CronJob from "./modules/CronJob";
+import Utils from "./modules/Utils";
 
 const app = express();
 
@@ -64,19 +65,22 @@ app.use("/pegawai/fo", routerCICO)
 app.use(Middlewares.notFound)
 
 // Ping
-app.get("/ping", Middlewares.ping)
+app.get("/ping", Middlewares.ping);
 
-app.listen(process.env.PORT, () => {
-    const localIP = getIP()
-    console.log(`Server is running on:`)
-    console.log(`  Local:    http://localhost:${process.env.PORT}`)
-    if (localIP) {
-        console.log(`  Network:  http://${localIP}:${process.env.PORT}\n`)
-    }
-})
+(async () => {
+    await Utils.init()
+    app.listen(process.env.PORT, () => {
+        const localIP = getIP()
+        console.log(`Server is running on:`)
+        console.log(`  Local:    http://localhost:${process.env.PORT}`)
+        if (localIP) {
+            console.log(`  Network:  http://${localIP}:${process.env.PORT}\n`)
+        }
+    })
+    CronJob.run()
+    PdfController.init()
+})()
 
 process.on('uncaughtException', (err) => {
     console.log(err)
 });
-
-(() => CronJob.run())();

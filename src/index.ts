@@ -61,18 +61,20 @@ app.use("/pegawai/booking", BookingRouterP)
 app.use("/pegawai/users", UserPegawaiRouter)
 app.use("/pegawai/fo", routerCICO)
 
-// Error 404
+// Ping
+app.get("/ping", Middlewares.ping)
+
+// Fallback: Error 404
 app.use(Middlewares.notFound)
 
-// Ping
-app.get("/ping", Middlewares.ping);
+export const LOCAL_URL = `http://localhost:${process.env.PORT}`;
 
 (async () => {
     await Utils.init()
     app.listen(process.env.PORT, () => {
         const localIP = getIP()
         console.log(`Server is running on:`)
-        console.log(`  Local:    http://localhost:${process.env.PORT}`)
+        console.log(`  Local:    ${LOCAL_URL}`)
         if (localIP) {
             console.log(`  Network:  http://${localIP}:${process.env.PORT}\n`)
         }
@@ -80,6 +82,7 @@ app.get("/ping", Middlewares.ping);
     CronJob.run()
     PdfController.init()
 })()
+
 
 process.on('uncaughtException', (err) => {
     console.log(err)

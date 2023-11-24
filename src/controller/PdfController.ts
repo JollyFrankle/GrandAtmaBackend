@@ -1,8 +1,7 @@
 import { Request, Response, Router } from "express";
 import { ApiResponse } from "../modules/ApiResponses";
 import { prisma } from "../modules/PrismaService";
-// import puppeteer, { Browser } from "puppeteer";
-import puppeteer, { Browser } from "puppeteer-core";
+import puppeteer, { Browser } from "puppeteer";
 import hbs from "handlebars";
 import fs from "fs";
 import Utils from "../modules/Utils";
@@ -24,14 +23,22 @@ export default class PdfController {
     static async init() {
         let _browser: Promise<Browser>
         try {
-            // _browser = puppeteer.launch({
-            //     args: ['--no-sandbox'],
-            //     headless: "new"
-            // })
-
-            _browser = puppeteer.connect({
-                browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_TOKEN}`
-            })
+            if (process.env.USES_LOCAL_CHROME === "true") {
+                _browser = puppeteer.launch({
+                    args: ['--no-sandbox'],
+                    headless: "new"
+                })
+            } else {
+                const params = new URLSearchParams({
+                    // token: process.env.BROWSERLESS_TOKEN ?? "",
+                    "--user-data-dir": "/tmp",
+                    blockAds: "true",
+                })
+                _browser = puppeteer.connect({
+                    browserWSEndpoint: `wss://chrome.browserless.io?${params.toString()}`,
+                    protocolTimeout: 60000,
+                })
+            }
 
             _browser.catch((err) => {
                 console.error("Error launching browser", err)
@@ -41,6 +48,10 @@ export default class PdfController {
         } catch (err: any) {
             console.error("Error launching browser", err)
         }
+
+        hbs.registerPartial('kop', getTemplate('KopHeader'))
+        hbs.registerPartial('style', getTemplate('Style'))
+        hbs.registerHelper('b64Logo', () => new hbs.SafeString(getB64Image("gah-logo.webp")))
     }
 
     static async showPdfTandaTerima(req: Request, res: Response) {
@@ -134,7 +145,6 @@ export default class PdfController {
         // res.setHeader('Content-Disposition', `attachment; filename=TandaTerima-${reservasi.id_booking}.pdf`);
 
         const page = await PdfController.browser.newPage()
-        const b64Logo = getB64Image("gah-logo.webp")
 
         const template = getTemplate('TandaTerimaReservasi')
         const html = template({
@@ -146,7 +156,7 @@ export default class PdfController {
                 tanggal_dibuat: Utils.dateFormatDate.format(reservasi.created_at),
                 total_harga_kamar: Utils.currencyFormat.format(reservasi.total),
                 uang_jaminan: Utils.currencyFormat.format(reservasi.jumlah_dp ?? 0),
-                permintaan_tambahan: permintaanTambahan
+                permintaan_tambahan: permintaanTambahan.trim()
             },
             detail_pemesanan: {
                 check_in: Utils.dateFormatDate.format(reservasi.arrival_date),
@@ -163,8 +173,7 @@ export default class PdfController {
                     harga: Utils.currencyFormat.format(rr.harga_per_malam),
                     total: Utils.currencyFormat.format(rr.harga_per_malam * reservasi.jumlah_malam!! * rr.jumlah_kamar)
                 }
-            }),
-            b64Logo: b64Logo
+            })
         })
 
         await page.setContent(html)
@@ -173,10 +182,10 @@ export default class PdfController {
             format: 'A4',
             printBackground: true,
             margin: {
-                top: '1cm',
-                bottom: '1cm',
-                left: '1cm',
-                right: '1cm'
+                top: '.5in',
+                bottom: '.5in',
+                left: '.5in',
+                right: '.5in'
             }
         })
 
@@ -281,7 +290,6 @@ export default class PdfController {
         // res.setHeader('Content-Disposition', `attachment; filename=TandaTerima-${reservasi.id_booking}.pdf`);
 
         const page = await PdfController.browser.newPage()
-        const b64Logo = getB64Image("gah-logo.webp")
 
         const template = getTemplate('Invoice')
         const html = template({
@@ -326,9 +334,8 @@ export default class PdfController {
                 total_layanan: Utils.currencyFormat.format(invoice.total_layanan),
                 grand_total: Utils.currencyFormat.format(invoice.grand_total)
             },
-            kembalian: selisih < 0 ? Utils.currencyFormat.format(selisih) : null,
-            kekurangan: selisih > 0 ? Utils.currencyFormat.format(selisih) : null,
-            b64Logo: b64Logo
+            kembalian: selisih < 0 ? Utils.currencyFormat.format(-selisih) : null,
+            kekurangan: selisih > 0 ? Utils.currencyFormat.format(selisih) : null
         })
 
         await page.setContent(html)
@@ -337,10 +344,10 @@ export default class PdfController {
             format: 'A4',
             printBackground: true,
             margin: {
-                top: '1cm',
-                bottom: '1cm',
-                left: '1cm',
-                right: '1cm'
+                top: '.5in',
+                bottom: '.5in',
+                left: '.5in',
+                right: '.5in'
             }
         })
 
@@ -351,5 +358,3 @@ export default class PdfController {
 export const router = Router()
 router.get('/tanda-terima/:b64id', PdfController.showPdfTandaTerima)
 router.get('/invoice/:b64id', PdfController.showPdfInvoice)
-
-hbs.registerPartial('kop', getTemplate('KopHeader'))

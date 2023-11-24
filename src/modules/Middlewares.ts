@@ -5,7 +5,7 @@ import { JwtUserCustomer, JwtUserPegawai, UserCustomer, UserPegawai } from "./Mo
 
 export interface CustomerOrPegawaiRequest extends Request {
     data?: {
-        user: UserCustomer|UserPegawai;
+        user: UserCustomer | UserPegawai;
         token: string;
     }
 }
@@ -28,7 +28,7 @@ export default class Middlewares {
 
     private static getDecodedToken<T>(req: Request) {
         // Check token exists
-        const token = Authentication.authToken<string|undefined>(req)
+        const token = Authentication.authToken<string | undefined>(req)
         if (token === undefined) {
             return null
         }
@@ -107,7 +107,7 @@ export default class Middlewares {
         console.log(new Date(), req.method, req.url)
         // delay 500ms
         // setTimeout(() => {
-            next()
+        next()
         // }, 500)
         // next()
     }
@@ -122,7 +122,14 @@ export default class Middlewares {
     static async ping(_: Request, res: Response) {
         return ApiResponse.success(res, {
             message: "Pong",
-            data: null
+            data: {
+                "Memory (MB)": {
+                    "RSS (Resident Set Size)": (process.memoryUsage().rss / 1024 / 1024).toFixed(2),
+                    "Heap Total": (process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2),
+                    "Heap Used": (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2),
+                    "External": (process.memoryUsage().external / 1024 / 1024).toFixed(2)
+                }
+            }
         })
     }
 }

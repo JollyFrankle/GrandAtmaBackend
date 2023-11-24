@@ -4,86 +4,13 @@
 <head>
     <meta charset="utf-8">
     <title>Nota Lunas/Invoice</title>
-    <style>
-        body {
-            font-family: "Arial", sans-serif;
-            font-size: 12pt;
-            line-height: 1.5;
-        }
-
-        .flex {
-            display: flex;
-            flex-direction: row;
-        }
-
-        .justify-between {
-            justify-content: space-between;
-        }
-
-        .justify-end {
-            justify-content: flex-end;
-        }
-
-        .items-center {
-            align-items: center;
-        }
-
-        .items-top {
-            align-items: flex-start;
-        }
-
-        .gap-4 {
-            gap: 1rem;
-        }
-
-        .mb-4 {
-            margin-bottom: 1rem;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .text-end {
-            text-align: end;
-        }
-
-        h1,
-        h2,
-        h3,
-        h4,
-        h5,
-        h6,
-        p {
-            margin: 0;
-        }
-
-        .table-bordered {
-            border-collapse: collapse;
-            border: 1px solid #6c757d;
-            width: 100%;
-        }
-
-        .table-bordered td,
-        .table-bordered th {
-            border: 1px solid #6c757d;
-            padding: .25rem .5rem;
-        }
-
-        .heading {
-            border-top: 1px solid #6c757d;
-            padding: .25rem 0;
-            text-align: center;
-            border-bottom: 1px solid #6c757d;
-            margin-bottom: 1rem;
-        }
-    </style>
+    {{> style}}
 </head>
 
 <body>
     {{> kop}}
 
-    <h3 class="heading">INVOICE</h3>
+    <h3 class="font-bold heading">INVOICE</h3>
 
     <div class="flex gap-4 justify-end mb-4 items-top">
         <table>
@@ -118,7 +45,7 @@
         </table>
     </div>
 
-    <h3 class="heading">DETAIL PEMESANAN</h3>
+    <h3 class="font-bold heading">DETAIL</h3>
     <div class="mb-4">
         <table>
             <tr>
@@ -140,7 +67,7 @@
         </table>
     </div>
 
-    <h3 class="heading">KAMAR</h3>
+    <h3 class="font-bold heading">KAMAR</h3>
     <table class="table-bordered mb-4">
         <thead>
             <tr>
@@ -173,7 +100,7 @@
     </table>
 
     {{#if layanan }}
-    <h3 class="heading">LAYANAN</h3>
+    <h3 class="font-bold heading">LAYANAN</h3>
     <table class="table-bordered mb-4">
         <thead>
             <tr>
@@ -208,40 +135,42 @@
     </table>
     {{/if}}
 
-    <div style="width: fit-content; margin-left: auto; margin-bottom: 1rem">
-        <table>
+    <div class="flex items-center break-inside-avoid">
+        <div class="flex flex-1 items-center">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Rickrolling_QR_code.png" class="w-20 h-20 me-2" />
+            <div>
+                <p class="font-bold">Terima kasih atas kunjungan Anda</p>
+                <p class="mb-1">Semoga Anda senang dan nyaman selama menginap.</p>
+                <p><small>Kritik dan Saran dapat Anda sampaikan melalui QR di samping.</small></p>
+            </div>
+        </div>
+        <table class="w-fit">
             <tr>
-                <td style="font-weight: bold; width: 10rem">TOTAL</td>
+                <td style="font-weight: bold; width: 9rem">TOTAL</td>
                 <td style="font-weight: bold">{{ detail_inv.grand_total }}</td>
             </tr>
             <tr>
-                <td style="width: 10rem">Jaminan</td>
+                <td style="width: 9rem">Jaminan</td>
                 <td style="font-weight: bold">{{ detail_tt.uang_jaminan }}</td>
             </tr>
             <tr>
-                <td style="width: 10rem">Deposit</td>
+                <td style="width: 9rem">Deposit</td>
                 <td style="font-weight: bold">{{ detail_tt.deposit }}</td>
             </tr>
             {{#if kembalian }}
             <tr>
-                <td style="font-weight: bold; width: 10rem">Dikembalikan</td>
+                <td style="font-weight: bold; width: 9rem">Dikembalikan</td>
                 <td style="font-weight: bold">{{ kembalian }}</td>
             </tr>
             {{/if}}
             {{#if kekurangan }}
             <tr>
-                <td style="font-weight: bold; width: 10rem">Cash</td>
+                <td style="font-weight: bold; width: 9rem">Cash</td>
                 <td style="font-weight: bold">{{ kekurangan }}</td>
             </tr>
             {{/if}}
         </table>
     </div>
-
-    <div class="text-center mt-4">
-        <p>Terima kasih atas kunjungan Anda</p>
-        <p>Semoga Anda senang dan nyaman selama menginap di hotel kami</p>
-    </div>
-
 </body>
 
 </html>

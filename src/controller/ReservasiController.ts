@@ -93,7 +93,12 @@ async function getAllBookings(idC: number, status?: string) {
         },
         include: {
             user_customer: true,
-            user_pegawai: true
+            user_pegawai: true,
+            invoice: {
+                select: {
+                    no_invoice: true
+                }
+            }
         },
         orderBy: {
             id: 'desc',

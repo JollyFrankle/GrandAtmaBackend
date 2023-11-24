@@ -286,7 +286,11 @@ export default class CheckInOutController {
             },
             include: {
                 user_customer: true,
-                invoice: true
+                invoice: {
+                    select: {
+                        no_invoice: true
+                    }
+                }
             },
             orderBy: {
                 departure_date: 'desc'
@@ -319,7 +323,19 @@ export default class CheckInOutController {
                         return 'Request malformed untuk kamar!'
                     }
 
-                    return rooms.filter((it) => !(+it.id_rr) || !it.no_kamar || typeof it.new_id_jk === "undefined").length > 0 ? 'Request malformed untuk kamar!' : null
+                    const invalidInput = rooms.filter((it) => !(+it.id_rr) || !it.no_kamar || typeof it.new_id_jk === "undefined")
+                    if (invalidInput.length > 0) {
+                        return 'Request malformed untuk kamar!'
+                    }
+
+                    // Check for duplicate no_kamar
+                    const noKamar = rooms.map((it) => it.no_kamar)
+                    const noKamarUnique = [...new Set(noKamar)]
+                    if (noKamar.length !== noKamarUnique.length) {
+                        return 'Ada kamar yang duplikat'
+                    }
+
+                    return null
                 }
             }
         })
@@ -672,6 +688,16 @@ export default class CheckInOutController {
             },
             data: {
                 status: "selesai"
+            }
+        })
+
+        // Update di reservasi_cico
+        await prisma.reservasi_cico.update({
+            where: {
+                id_reservasi: reservasi.id
+            },
+            data: {
+                checked_out_at: invoice.tanggal_lunas
             }
         })
 

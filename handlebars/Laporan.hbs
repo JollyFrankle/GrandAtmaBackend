@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{> style}}
+
+    <style>
+        {{#each headers}}
+        #table-report td:nth-child({{offset @index 1 }}) {
+            {{ tdCss }}
+        }
+        {{/each}}
+    </style>
+</head>
+
+<body>
+    {{> kop}}
+
+    <h3 class="font-bold heading uppercase mb-4">{{ title }}</h3>
+
+    <table class="mb-4">
+        {{#each meta}}
+        <tr>
+            <td style="width: 7rem">{{ text }}</td>
+            <td style="width: 1rem">:</td>
+            <td style="font-weight: bold">{{ value }}</td>
+        </tr>
+        {{/each}}
+    </table>
+
+    <table class="table-bordered mb-4" id="table-report">
+        <thead>
+            <tr>
+                {{#each headers}}
+                <th>{{ text }}</th>
+                {{/each}}
+            </tr>
+        </thead>
+        <tbody>
+            {{#each data}}
+            <tr>
+                {{#each this}}
+                <td>{{ this }}</td>
+                {{/each}}
+            </tr>
+            {{/each}}
+        </tbody>
+        {{#if footer}}
+        <tfoot>
+            <tr>
+                {{#each footer}}
+                <th colspan="{{ colspan }}" style="{{ style }}">{{ text }}</th>
+                {{/each}}
+            </tr>
+        </tfoot>
+        {{/if}}
+    </table>
+
+    {{#if raw_grafik}}
+        <h4 class="font-bold text-center mb-0">Grafik</h4>
+        {{{ raw_grafik }}}
+    {{/if}}
+
+    <div class="text-end text-sm mt-4">
+        Dicetak tanggal {{ tanggal }}
+    </div>
+</body>
+
+</html>

@@ -147,24 +147,28 @@ async function cancelBooking(idC: number, idReservasi: number) {
         throw new Error("Reservasi tidak bisa dibatalkan karena sudah melewati tanggal check in")
     }
 
+    let batalMessage: string
+    let jumlahDp: null | undefined = undefined
+    if (reservasiBelumSelesai) {
+        batalMessage = "Reservasi yang belum selesai ini berhasil dibatalkan"
+    } else if(reservasi.arrival_date > moment().add(7, 'days').toDate()) {
+        batalMessage = "Reservasi berhasil dibatalkan dan uang akan dikembalikan"
+        // jumlah dp = null agar tidak dihitung di laporan
+        jumlahDp = null
+    } else {
+        batalMessage = "Reservasi berhasil dibatalkan dan uang tidak dikembalikan"
+    }
+
     await prisma.reservasi.update({
         where: {
             id: idReservasi
         },
         data: {
             status: 'batal',
+            jumlah_dp: jumlahDp, // uang muka diset null kalau batal & dikembalikan
             updated_at: new Date()
         }
     })
-
-    let batalMessage: string
-    if (reservasiBelumSelesai) {
-        batalMessage = "Reservasi yang belum selesai ini berhasil dibatalkan"
-    } else if(reservasi.arrival_date > moment().add(7, 'days').toDate()) {
-        batalMessage = "Reservasi berhasil dibatalkan dan uang akan dikembalikan"
-    } else {
-        batalMessage = "Reservasi berhasil dibatalkan dan uang tidak dikembalikan"
-    }
 
     return batalMessage
 }

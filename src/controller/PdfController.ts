@@ -5,6 +5,9 @@ import puppeteer, { Browser } from "puppeteer";
 import hbs from "handlebars";
 import fs from "fs";
 import Utils from "../modules/Utils";
+import LaporanContent from "../modules/LaporanContent";
+import Authentication from "../modules/Authentication";
+import { JwtUserPegawai, UserPegawai } from "../modules/Models";
 
 function getTemplate(name: string) {
     const file = fs.readFileSync(`${__dirname}/../../handlebars/${name}.hbs`, 'utf-8')
@@ -52,6 +55,8 @@ export default class PdfController {
         hbs.registerPartial('kop', getTemplate('KopHeader'))
         hbs.registerPartial('style', getTemplate('Style'))
         hbs.registerHelper('b64Logo', () => new hbs.SafeString(getB64Image("gah-logo.webp")))
+        hbs.registerHelper("offset", (index: number, offset: number) => index + offset)
+        hbs.registerHelper("json", (data: any) => JSON.stringify(data))
     }
 
     static async showPdfTandaTerima(req: Request, res: Response) {
@@ -285,9 +290,9 @@ export default class PdfController {
         }
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename=TandaTerima-${reservasi.id_booking}.pdf`);
+        res.setHeader('Content-Disposition', `inline; filename=Invoice-${invoice.no_invoice}.pdf`);
         // Force download:
-        // res.setHeader('Content-Disposition', `attachment; filename=TandaTerima-${reservasi.id_booking}.pdf`);
+        // res.setHeader('Content-Disposition', `attachment; filename=Invoice-${invoice.no_invoice}.pdf`);
 
         const page = await PdfController.browser.newPage()
 
@@ -353,8 +358,159 @@ export default class PdfController {
 
         return res.send(pdf)
     }
+
+    static async laporan(req: Request, res: Response) {
+        const { noLap } = req.params
+        const query = req.query
+
+        if (!req.query.token) {
+            return ApiResponse.error(res, {
+                message: "Unauthorized",
+                errors: null
+            }, 401)
+        }
+
+        const decodedToken = Authentication.decodeToken<JwtUserPegawai>(req.query.token.toString())
+        if (!decodedToken) {
+            return ApiResponse.error(res, {
+                message: "Unauthorized",
+                errors: null
+            }, 401)
+        }
+
+        const user = await Authentication.getUserFromToken(decodedToken, 'auth', 'p') as UserPegawai
+        if (["gm", "owner"].indexOf(user.role) === -1) {
+            return ApiResponse.error(res, {
+                message: "Unauthorized",
+                errors: null
+            }, 401)
+        }
+
+        if (!query.tahun || +query.tahun <= 0) {
+            return ApiResponse.error(res, {
+                message: "Tahun tidak valid",
+                errors: null
+            }, 422)
+        }
+
+        const tahun = +query.tahun
+
+        let data
+        let total: string | undefined = undefined
+        let grafik: string | undefined = undefined
+        switch(+noLap) {
+            case 1:
+                data = await LaporanContent.laporan1(tahun)
+                total = data.data.reduce((acc, cur) => acc + cur.jumlah, 0).toString()
+                break
+            case 2:
+                data = await LaporanContent.laporan2(tahun)
+                total = Utils.currencyFormat.format(data.data.reduce((acc, cur) => acc + cur.total, 0))
+
+                grafik = getTemplate("laporan-grafik/GrafikL2")({
+                    labels: data.data.map((d) => d.bulan),
+                    data: {
+                        grup: data.data.map((d) => d.grup),
+                        personal: data.data.map((d) => d.personal),
+                        total: data.data.map((d) => d.total)
+                    }
+                })
+
+                data.data.forEach((d) => {
+                    // @ts-ignore
+                    d.total = Utils.numberFormat.format(d.total)
+                    // @ts-ignore
+                    d.grup = Utils.numberFormat.format(d.grup)
+                    // @ts-ignore
+                    d.personal = Utils.numberFormat.format(d.personal)
+                })
+                break
+            case 3:
+                if (!query.bulan || +query.bulan <= 0) {
+                    return ApiResponse.error(res, {
+                        message: "Bulan tidak valid",
+                        errors: null
+                    }, 422)
+                }
+                const bulan = +query.bulan
+                data = await LaporanContent.laporan3(tahun, bulan)
+                total = "0"
+                break
+            case 4:
+                data = await LaporanContent.laporan4(tahun)
+                data.data.forEach((d) => {
+                    // @ts-ignore
+                    d.total_pembayaran = Utils.numberFormat.format(d.total_pembayaran)
+                })
+                break
+            default:
+                return ApiResponse.error(res, {
+                    message: "Laporan tidak ditemukan",
+                    errors: null
+                }, 404)
+        }
+
+        let footer
+        if (total !== undefined) {
+            footer = [
+                {
+                    colspan: data?.headers.length ? data?.headers.length - 1 : undefined,
+                    text: 'Total',
+                    style: `text-align: end;`
+                },
+                {
+                    text: total,
+                    style: `text-align: end; font-weight: bold;`
+                }
+            ]
+        }
+
+        const tpl = {
+            ...data,
+            footer,
+            tanggal: Utils.dateFormatDate.format(new Date()),
+            raw_grafik: grafik
+        }
+
+        const template = getTemplate('Laporan')
+        const html = template(tpl)
+
+        if (!query.readonly) {
+            if (!PdfController.browser) {
+                return ApiResponse.error(res, {
+                    message: "Terjadi kesalahan, silahkan coba beberapa saat lagi atau hubungi admin jika masalah masih belum teratasi",
+                    errors: null
+                }, 500)
+            }
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${data.title} (${Utils.dateFormatFull.format(new Date())}).pdf"`);
+            // Force download:
+            // res.setHeader('Content-Disposition', `attachment; filename=TandaTerima-${reservasi.id_booking}.pdf`);
+
+            const page = await PdfController.browser.newPage()
+            await page.setContent(html)
+
+            const pdf = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: {
+                    top: '.5in',
+                    bottom: '.5in',
+                    left: '.5in',
+                    right: '.5in'
+                }
+            })
+
+            return res.send(pdf)
+        } else {
+            res.setHeader('Content-Type', 'text/html');
+            return res.send(html)
+        }
+    }
 }
 
 export const router = Router()
 router.get('/tanda-terima/:b64id', PdfController.showPdfTandaTerima)
 router.get('/invoice/:b64id', PdfController.showPdfInvoice)
+router.get('/laporan/:noLap', PdfController.laporan)

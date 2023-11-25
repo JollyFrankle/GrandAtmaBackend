@@ -12,6 +12,7 @@ import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP
 import PdfController, { router as PdfRouter } from "./controller/PdfController";
 import { router as UserPegawaiRouter } from "./controller/UserPegawaiController";
 import { router as routerCICO } from "./controller/CheckInOutController";
+import { router as routerLaporan } from "./controller/LaporanController";
 import getIP from "./modules/LocalNetwork";
 import CronJob from "./modules/CronJob";
 import Utils from "./modules/Utils";
@@ -60,6 +61,7 @@ app.use("/pegawai/reservasi", ReservasiRouterP)
 app.use("/pegawai/booking", BookingRouterP)
 app.use("/pegawai/users", UserPegawaiRouter)
 app.use("/pegawai/fo", routerCICO)
+app.use("/pegawai/laporan", routerLaporan)
 
 // Ping
 app.get("/ping", Middlewares.ping)

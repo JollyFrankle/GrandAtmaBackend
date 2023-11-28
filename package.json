@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",
-    "start-env": "ts-node -r dotenv/config src/index.ts",
+    "dev": "ts-node -r dotenv/config src/index.ts",
     "playground": "ts-node src/playground.ts",
     "install-puppeteer": "npm --prefix ./node_modules/puppeteer run postinstall"
   },

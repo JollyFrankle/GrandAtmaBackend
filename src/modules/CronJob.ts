@@ -1,3 +1,4 @@
+import PdfController from "../controller/PdfController";
 import { prisma } from "./PrismaService";
 import Utils from "./Utils";
 
@@ -41,9 +42,14 @@ export default class CronJob {
         })
     }
 
+    private static async cronBrowser() {
+        await PdfController.init()
+    }
+
     private static async execute() {
         const __START__ = Date.now();
         await CronJob.cronUpdateStatusReservasi();
+        await CronJob.cronBrowser();
         const __END__ = Date.now();
 
         console.log(new Date(), "CRONJOB", "DONE", __END__ - __START__ + "ms")

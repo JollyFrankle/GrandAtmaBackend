@@ -25,6 +25,11 @@ export default class PdfController {
 
     static async init() {
         let _browser: Promise<Browser>
+        if (PdfController.browser) {
+            // close browser
+            await PdfController.browser.close()
+        }
+
         try {
             if (process.env.USES_LOCAL_CHROME === "true") {
                 _browser = puppeteer.launch({
@@ -386,7 +391,7 @@ export default class PdfController {
             }, 401)
         }
 
-        if (!query.tahun || +query.tahun <= 0) {
+        if (!query.tahun || isNaN(+query.tahun) || +query.tahun <= 0) {
             return ApiResponse.error(res, {
                 message: "Tahun tidak valid",
                 errors: null

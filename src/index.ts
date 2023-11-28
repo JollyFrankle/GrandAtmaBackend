@@ -82,7 +82,6 @@ export const LOCAL_URL = `http://localhost:${process.env.PORT}`;
         }
     })
     CronJob.run()
-    PdfController.init()
 })()
 
 

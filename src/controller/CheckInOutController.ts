@@ -264,7 +264,8 @@ export default class CheckInOutController {
                 status: 'checkin' // kalau statusnya masih checkin, berarti masih menginap
             },
             include: {
-                user_customer: true
+                user_customer: true,
+                user_pegawai: true
             }
         })
 

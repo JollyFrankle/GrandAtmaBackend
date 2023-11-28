@@ -64,6 +64,13 @@
         {{{ raw_grafik }}}
     {{/if}}
 
+    {{#if note}}
+        <div class="mt-4 text-end text-sm text-gray-600">
+            <strong>Catatan: </strong>
+            {{ note }}
+        </div>
+    {{/if}}
+
     <div class="text-end text-sm mt-4">
         Dicetak tanggal {{ tanggal }}
     </div>

@@ -38,7 +38,7 @@ export default class PdfController {
                 })
             } else {
                 const params = new URLSearchParams({
-                    // token: process.env.BROWSERLESS_TOKEN ?? "",
+                    token: process.env.BROWSERLESS_TOKEN ?? "",
                     "--user-data-dir": "/tmp",
                     blockAds: "true",
                 })
@@ -439,7 +439,16 @@ export default class PdfController {
                 }
                 const bulan = +query.bulan
                 data = await LaporanContent.laporan3(tahun, bulan)
-                total = "0"
+                total = Utils.numberFormat.format(data.data.reduce((acc, cur) => acc + cur.total, 0))
+
+                grafik = getTemplate("laporan-grafik/GrafikL3")({
+                    labels: data.data.map((d) => d.jenis_kamar),
+                    data: {
+                        grup: data.data.map((d) => d.grup),
+                        personal: data.data.map((d) => d.personal),
+                        total: data.data.map((d) => d.total)
+                    }
+                })
                 break
             case 4:
                 data = await LaporanContent.laporan4(tahun)

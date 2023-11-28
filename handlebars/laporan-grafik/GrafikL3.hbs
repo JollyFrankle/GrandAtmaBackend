@@ -1,14 +1,12 @@
 <div class="h-72 mx-auto" style="aspect-ratio: 2;">
-    <canvas id="myChart" class="mx-auto !h-full !w-full"></canvas>
+    <canvas id="myChart" class="!h-full !w-full"></canvas>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js" integrity="sha512-6HrPqAvK+lZElIZ4mZ64fyxIBTsaX5zAFZg2V/2WT+iKPrFzTzvx6QAsLW2OaLwobhMYBog/+bvmIEEGXi0p1w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script lang="javascript">
-    Chart.defaults.font.size = "11pt"
-    Chart.defaults.font.family="Gabarito"
+    Chart.defaults.font.size.default = "10pt"
+    {{!-- Chart.defaults.font.family = "Gabarito" --}}
 
-    const nf = new Intl.NumberFormat('id-ID', {
-        maximumFractionDigits: 2,
-    })
+    const nf = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 })
 
     const labels = {{{ json labels }}};
     const data = {
@@ -17,34 +15,22 @@
             {
                 label: 'Grup',
                 data: {{{ json data.grup }}},
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.2)',
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                ],
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
                 borderWidth: 1
             },
             {
                 label: 'Personal',
                 data: {{{ json data.personal }}},
-                backgroundColor: [
-                    'rgba(54, 162, 235, 0.2)',
-                ],
-                borderColor: [
-                    'rgba(54, 162, 235, 1)',
-                ],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1
             },
             {
                 label: 'Total',
                 data: {{{ json data.total }}},
-                backgroundColor: [
-                    'rgba(255, 206, 86, 0.2)',
-                ],
-                borderColor: [
-                    'rgba(255, 206, 86, 1)',
-                ],
+                backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                borderColor: 'rgba(255, 206, 86, 1)',
                 borderWidth: 1
             }
         ]
@@ -54,21 +40,35 @@
         type: 'bar',
         data: data,
         options: {
-            scales: {
-                y: {
-                    callback: (value) => nf.format(value),
-                    beginAtZero: true
+            plugins: {
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.dataset.label || '';
+                            if (label) {
+                                return `${label}: ${nf.format(context.parsed.y)}`;
+                            }
+                            return `${nf.format(context.parsed.y)}`;
+                        }
+                    }
                 }
             },
-            tooltip: {
-                enabled: true
+            scales: {
+                y: {
+                    ticks: {
+                        callback: (value) => nf.format(value),
+                    },
+                    beginAtZero: true
+                }
             },
             interaction: {
                 mode: 'index',
                 intersect: false
-            }
+            },
+            animation: false,
+            aspectRatio: 2
         },
-        aspectRatio: 2
     }
 
     const myChart = new Chart(

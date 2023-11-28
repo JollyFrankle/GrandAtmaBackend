@@ -24,6 +24,14 @@ export default class PdfController {
     static browser: Browser | null = null
 
     static async init() {
+        // Register partials
+        hbs.registerPartial('kop', getTemplate('KopHeader'))
+        hbs.registerPartial('style', getTemplate('Style'))
+        hbs.registerHelper('b64Logo', () => new hbs.SafeString(getB64Image("gah-logo.webp")))
+        hbs.registerHelper("offset", (index: number, offset: number) => index + offset)
+        hbs.registerHelper("json", (data: any) => JSON.stringify(data))
+
+        // Browser
         let _browser: Promise<Browser>
         if (PdfController.browser) {
             // close browser
@@ -34,17 +42,27 @@ export default class PdfController {
             if (process.env.USES_LOCAL_CHROME === "true") {
                 _browser = puppeteer.launch({
                     args: ['--no-sandbox'],
-                    headless: "new"
+                    headless: "new",
+                    defaultViewport: {
+                        width: 595,
+                        height: 842,
+                        deviceScaleFactor: 2
+                    }
                 })
             } else {
                 const params = new URLSearchParams({
                     token: process.env.BROWSERLESS_TOKEN ?? "",
                     "--user-data-dir": "/tmp",
-                    blockAds: "true",
+                    blockAds: "true"
                 })
                 _browser = puppeteer.connect({
                     browserWSEndpoint: `wss://chrome.browserless.io?${params.toString()}`,
                     protocolTimeout: 60000,
+                    defaultViewport: {
+                        width: 595,
+                        height: 842,
+                        deviceScaleFactor: 2
+                    }
                 })
             }
 
@@ -56,12 +74,6 @@ export default class PdfController {
         } catch (err: any) {
             console.error("Error launching browser", err)
         }
-
-        hbs.registerPartial('kop', getTemplate('KopHeader'))
-        hbs.registerPartial('style', getTemplate('Style'))
-        hbs.registerHelper('b64Logo', () => new hbs.SafeString(getB64Image("gah-logo.webp")))
-        hbs.registerHelper("offset", (index: number, offset: number) => index + offset)
-        hbs.registerHelper("json", (data: any) => JSON.stringify(data))
     }
 
     static async showPdfTandaTerima(req: Request, res: Response) {
@@ -186,7 +198,7 @@ export default class PdfController {
             })
         })
 
-        await page.setContent(html)
+        await page.setContent(html, { waitUntil: 'domcontentloaded' })
 
         const pdf = await page.pdf({
             format: 'A4',
@@ -199,6 +211,7 @@ export default class PdfController {
             }
         })
 
+        await page.close()
         return res.send(pdf)
     }
 
@@ -348,7 +361,7 @@ export default class PdfController {
             kekurangan: selisih > 0 ? Utils.currencyFormat.format(selisih) : null
         })
 
-        await page.setContent(html)
+        await page.setContent(html, { waitUntil: 'domcontentloaded' })
 
         const pdf = await page.pdf({
             format: 'A4',
@@ -361,6 +374,7 @@ export default class PdfController {
             }
         })
 
+        await page.close()
         return res.send(pdf)
     }
 
@@ -383,8 +397,8 @@ export default class PdfController {
             }, 401)
         }
 
-        const user = await Authentication.getUserFromToken(decodedToken, 'auth', 'p') as UserPegawai
-        if (["gm", "owner"].indexOf(user.role) === -1) {
+        const user = await Authentication.getUserFromToken(decodedToken, 'auth', 'p') as UserPegawai | undefined
+        if (["gm", "owner"].indexOf(user?.role ?? "") === -1) {
             return ApiResponse.error(res, {
                 message: "Unauthorized",
                 errors: null
@@ -503,7 +517,7 @@ export default class PdfController {
             // res.setHeader('Content-Disposition', `attachment; filename=TandaTerima-${reservasi.id_booking}.pdf`);
 
             const page = await PdfController.browser.newPage()
-            await page.setContent(html)
+            await page.setContent(html, { waitUntil: 'domcontentloaded' })
 
             const pdf = await page.pdf({
                 format: 'A4',
@@ -516,6 +530,7 @@ export default class PdfController {
                 }
             })
 
+            await page.close()
             return res.send(pdf)
         } else {
             res.setHeader('Content-Type', 'text/html');

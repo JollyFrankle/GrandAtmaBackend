@@ -128,9 +128,9 @@ export default class LaporanContent {
             INNER JOIN reservasi_rooms B ON B.id_reservasi = A.id
             INNER JOIN user_customer C ON C.id = A.id_customer
             INNER JOIN jenis_kamar D ON D.id = B.id_jenis_kamar
-            WHERE MONTH(A.arrival_date) = ${bulan}
-            AND YEAR(A.arrival_date) = ${tahun}
-            GROUP BY jenis_kamar, type
+            WHERE YEAR(A.arrival_date) = ${tahun}
+            AND MONTH(A.arrival_date) = ${bulan}
+            GROUP BY id_jk, type
             ORDER BY B.id_jenis_kamar ASC;
         ` as { id_jk: number, jenis_kamar: string, type: 'g' | 'p', jumlah: BigInt }[]
 

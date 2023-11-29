@@ -16,15 +16,15 @@
         <table>
             <tr>
                 <td style="width: 8rem">Tanggal</td>
-                <td style="font-weight: bold">{{ detail_inv.tanggal }}</td>
+                <td class="font-bold">{{ detail_inv.tanggal }}</td>
             </tr>
             <tr>
                 <td style="width: 8rem">No. Invoice</td>
-                <td style="font-weight: bold">{{ detail_inv.no_invoice }}</td>
+                <td class="font-bold">{{ detail_inv.no_invoice }}</td>
             </tr>
             <tr>
                 <td style="width: 8rem">Front Office</td>
-                <td style="font-weight: bold">{{ detail_inv.nama_fo }}</td>
+                <td class="font-bold">{{ detail_inv.nama_fo }}</td>
             </tr>
         </table>
     </div>
@@ -32,15 +32,15 @@
         <table>
             <tr>
                 <td style="width: 8rem">ID Booking</td>
-                <td style="font-weight: bold">{{ detail_tt.id_booking }}</td>
+                <td class="font-bold">{{ detail_tt.id_booking }}</td>
             </tr>
             <tr>
                 <td style="width: 8rem">Nama</td>
-                <td style="font-weight: bold">{{ detail_tt.nama_customer }}</td>
+                <td class="font-bold">{{ detail_tt.nama_customer }}</td>
             </tr>
             <tr>
                 <td style="width: 8rem">Alamat</td>
-                <td style="font-weight: bold">{{ detail_tt.alamat_customer }}</td>
+                <td class="font-bold">{{ detail_tt.alamat_customer }}</td>
             </tr>
         </table>
     </div>
@@ -50,19 +50,19 @@
         <table>
             <tr>
                 <td style="width: 8rem">Check In</td>
-                <td style="font-weight: bold">{{ detail_pemesanan.check_in }}</td>
+                <td class="font-bold">{{ detail_pemesanan.check_in }}</td>
             </tr>
             <tr>
                 <td style="width: 8rem">Check Out</td>
-                <td style="font-weight: bold">{{ detail_pemesanan.check_out }}</td>
+                <td class="font-bold">{{ detail_pemesanan.check_out }}</td>
             </tr>
             <tr>
                 <td style="width: 8rem">Dewasa</td>
-                <td style="font-weight: bold">{{ detail_pemesanan.jumlah_dewasa }}</td>
+                <td class="font-bold">{{ detail_pemesanan.jumlah_dewasa }}</td>
             </tr>
             <tr>
                 <td style="width: 8rem">Anak-anak</td>
-                <td style="font-weight: bold">{{ detail_pemesanan.jumlah_anak }}</td>
+                <td class="font-bold">{{ detail_pemesanan.jumlah_anak }}</td>
             </tr>
         </table>
     </div>
@@ -146,27 +146,33 @@
         </div>
         <table class="w-fit">
             <tr>
-                <td style="font-weight: bold; width: 9rem">TOTAL</td>
-                <td style="font-weight: bold">{{ detail_inv.grand_total }}</td>
+                <td class="font-bold" style="width: 9rem">TOTAL</td>
+                <td class="font-bold">{{ detail_inv.grand_total }}</td>
             </tr>
             <tr>
-                <td style="width: 9rem">Jaminan</td>
-                <td style="font-weight: bold">{{ detail_tt.uang_jaminan }}</td>
+                <td>Jaminan</td>
+                <td class="font-bold">{{ detail_tt.uang_jaminan }}</td>
             </tr>
             <tr>
-                <td style="width: 9rem">Deposit</td>
-                <td style="font-weight: bold">{{ detail_tt.deposit }}</td>
+                <td>Deposit</td>
+                <td class="font-bold">{{ detail_tt.deposit }}</td>
             </tr>
+            {{#if denda }}
+            <tr>
+                <td class="text-red-600">Denda Overstay</td>
+                <td class="text-red-600 font-bold">{{ denda }}</td>
+            </tr>
+            {{/if}}
             {{#if kembalian }}
             <tr>
-                <td style="font-weight: bold; width: 9rem">Dikembalikan</td>
-                <td style="font-weight: bold">{{ kembalian }}</td>
+                <td class="font-bold">Dikembalikan</td>
+                <td class="font-bold">{{ kembalian }}</td>
             </tr>
             {{/if}}
             {{#if kekurangan }}
             <tr>
-                <td style="font-weight: bold; width: 9rem">Cash</td>
-                <td style="font-weight: bold">{{ kekurangan }}</td>
+                <td class="font-bold">Cash</td>
+                <td class="font-bold">{{ kekurangan }}</td>
             </tr>
             {{/if}}
         </table>

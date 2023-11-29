@@ -9,17 +9,18 @@ datasource db {
 }
 
 model invoice {
-  id_reservasi  Int          @id @db.UnsignedInt
-  id_fo         Int          @db.UnsignedInt
-  no_invoice    String       @db.VarChar(20)
-  tanggal_lunas DateTime     @default(now()) @db.Timestamp(0)
-  total_kamar   Int          @db.UnsignedInt
-  total_layanan Int          @db.UnsignedInt
-  pajak_layanan Int          @db.UnsignedInt
-  grand_total   Int          @db.UnsignedInt
-  created_at    DateTime     @default(now()) @db.Timestamp(0)
-  user_pegawai  user_pegawai @relation(fields: [id_fo], references: [id], onDelete: Cascade, map: "invoice_ibfk_1")
-  reservasi     reservasi    @relation(fields: [id_reservasi], references: [id], onDelete: Cascade, map: "invoice_ibfk_2")
+  id_reservasi   Int          @id @db.UnsignedInt
+  id_fo          Int          @db.UnsignedInt
+  no_invoice     String       @db.VarChar(20)
+  tanggal_lunas  DateTime     @default(now()) @db.Timestamp(0)
+  total_kamar    Int          @db.UnsignedInt
+  total_layanan  Int          @db.UnsignedInt
+  pajak_layanan  Int          @db.UnsignedInt
+  denda_overstay Int          @default(0) @db.UnsignedInt
+  grand_total    Int          @db.UnsignedInt
+  created_at     DateTime     @default(now()) @db.Timestamp(0)
+  user_pegawai   user_pegawai @relation(fields: [id_fo], references: [id], onDelete: Cascade, map: "invoice_ibfk_1")
+  reservasi      reservasi    @relation(fields: [id_reservasi], references: [id], onDelete: Cascade, map: "invoice_ibfk_2")
 
   @@index([id_fo], map: "invoice_ibfk_1")
 }
@@ -64,7 +65,7 @@ model layanan_tambahan {
   nama              String              @db.VarChar(100)
   short_desc        String              @db.Text
   gambar            String?             @db.Char(36)
-  satuan            String              @db.VarChar(10)
+  satuan            String              @db.VarChar(20)
   tarif             Int                 @db.UnsignedInt
   created_at        DateTime            @default(now()) @db.Timestamp(0)
   updated_at        DateTime            @default(now()) @db.Timestamp(0)

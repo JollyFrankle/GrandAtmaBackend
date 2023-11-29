@@ -36,13 +36,13 @@ async function getAllBookings(idC: number, status?: string) {
                     departure_date: {
                         gte: new Date(new Date().setHours(0, 0, 0, 0))
                     }
-                }
+                },
             ],
             NOT: {
                 OR: [
                     {
                         status: {
-                            in: ["batal", "expired"]
+                            in: ["batal", "expired", "selesai"]
                         }
                     },
                     {
@@ -58,13 +58,7 @@ async function getAllBookings(idC: number, status?: string) {
         }
     } else if (status === "completed") {
         statusQuery = {
-            // tanggal check out < hari ini
-            departure_date: {
-                lt: new Date(new Date().setHours(0, 0, 0, 0))
-            },
-            status: {
-                notIn: ["batal", "expired"]
-            }
+            status: "selesai"
         }
     } else if (status === "cancelled") {
         statusQuery = {

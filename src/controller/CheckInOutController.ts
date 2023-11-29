@@ -10,6 +10,7 @@ import Utils from "../modules/Utils";
 import ImageUpload, { multerUploadDest } from "../modules/ImageUpload";
 import Settings from "../modules/Settings";
 import { generateIdInvoice } from "../modules/IdGenerator";
+import { getKetersediaanKamar } from "./BookingController";
 
 interface KamarAvailibility {
     no_kamar: string,
@@ -145,6 +146,39 @@ function getTanggalCheckOutHariIni() {
         s: 0,
         ms: 0
     }).toDate()
+}
+
+async function getDendaOverstay(departureDate: Date, totalKamar: number) {
+    const sDendaOverstay = +(await Settings.get('DENDA_OVERSTAY')) // dalam persen (0,1 = 10%)
+    const sMaxDendaOverstay = +(await Settings.get('MAX_DENDA_OVERSTAY')) // dalam persen (0,1 = 10%)
+
+    // Get jumlah jam overstay (setelah jam check in selanjutnya)
+    const batasCO = moment(departureDate).set({ h: Utils.JAM_CHECKIN, m: 0, s: 0, ms: 0 })
+    const overstay = Math.ceil(moment().diff(batasCO, 'hours', true)) // ceil agar lebi h1 detik saja sudah dihitung 1 jam
+    // console.log('overstay', batasCO)
+    // console.log('now', moment())
+    // console.log('overstay', overstay)
+
+    let dendaOverstay = 0
+    if (overstay > 0) {
+        if (sMaxDendaOverstay > 0) {
+            dendaOverstay = Math.min(overstay * sDendaOverstay, sMaxDendaOverstay)
+        } else {
+            dendaOverstay = overstay * sDendaOverstay
+        }
+    } else {
+        dendaOverstay = 0
+    }
+
+    // overstay amount * total kamar
+    dendaOverstay = dendaOverstay * totalKamar
+    dendaOverstay = Math.ceil(dendaOverstay / 100) * 100 // roundup ke 100
+
+    return {
+        denda_perc: sDendaOverstay,
+        max_denda_perc: sMaxDendaOverstay,
+        denda: dendaOverstay
+    }
 }
 
 export default class CheckInOutController {
@@ -294,7 +328,7 @@ export default class CheckInOutController {
                 }
             },
             orderBy: {
-                departure_date: 'desc'
+                departure_date: 'asc'
             }
         })
 
@@ -474,6 +508,7 @@ export default class CheckInOutController {
         const validation = Validation.body(req, {
             layanan: {
                 required: true,
+                type: "array",
                 customRule: (value) => {
                     let layanan = value as { id: number, qty: number }[]
 
@@ -589,14 +624,16 @@ export default class CheckInOutController {
         // @ts-ignore
         delete reservasi.reservasi_rooms
 
-        const pajakLayanan = +(await Settings.get('PAJAK_LAYANAN'))
+        const sPajakLayanan = +(await Settings.get('PAJAK_LAYANAN')) // dalam persen (0,1 = 10%)
 
+        const dendaOverstay = await getDendaOverstay(reservasi.departure_date, reservasi.total)
         return ApiResponse.success(res, {
             message: "Berhasil mendapatkan data",
             data: {
                 reservasi: reservasi,
                 kamar: kamarGrouped,
-                pajak_layanan_perc: pajakLayanan
+                pajak_layanan_perc: sPajakLayanan,
+                overstay: dendaOverstay
             }
         })
     }
@@ -651,14 +688,16 @@ export default class CheckInOutController {
         // Total
         const totalKamar = reservasi.total
         const totalLayanan = reservasi.reservasi_layanan.reduce((acc, it) => acc + it.total, 0)
-        const pajakLayanan = +(await Settings.get('PAJAK_LAYANAN')) * totalLayanan
-        const total = totalKamar + totalLayanan + pajakLayanan
+        const sPajakLayanan = +(await Settings.get('PAJAK_LAYANAN')) * totalLayanan
+        const total = totalKamar + totalLayanan + sPajakLayanan
 
         const uangMuka = reservasi.jumlah_dp ?? 0
         const deposit = reservasi.reservasi_cico?.deposit ?? 0
         const terbayar = uangMuka + deposit
 
-        const selisih = total - terbayar
+        const dendaOverstay = await getDendaOverstay(reservasi.departure_date, reservasi.total)
+
+        const selisih = (total + dendaOverstay.denda) - terbayar
 
         if (+total_dibayar !== selisih) {
             return ApiResponse.error(res, {
@@ -677,7 +716,8 @@ export default class CheckInOutController {
                 tanggal_lunas: new Date(),
                 total_kamar: totalKamar,
                 total_layanan: totalLayanan,
-                pajak_layanan: pajakLayanan,
+                pajak_layanan: sPajakLayanan,
+                denda_overstay: dendaOverstay.denda,
                 grand_total: total
             }
         })
@@ -710,6 +750,116 @@ export default class CheckInOutController {
             }
         })
     }
+
+    static async perpanjang(req: PegawaiRequest, res: Response) {
+        const idReservasi = +req.params.id
+
+        const validation = Validation.body(req, {
+            jumlah_malam: {
+                required: true,
+                min: 1,
+                max: 7,
+                type: 'number'
+            }
+        })
+
+        if (validation.fails()) {
+            return ApiResponse.error(res, {
+                message: "Jumlah malam harus diisi",
+                errors: validation.errors
+            }, 422)
+        }
+
+        const { jumlah_malam } = validation.validated()
+
+        const reservasi = await prisma.reservasi.findUnique({
+            where: {
+                id: idReservasi,
+                status: 'checkin'
+            },
+            include: {
+                reservasi_rooms: {
+                    include: {
+                        jenis_kamar: true
+                    }
+                },
+                reservasi_layanan: {
+                    include: {
+                        layanan_tambahan: true
+                    }
+                },
+                reservasi_cico: true,
+                user_customer: true
+            }
+        })
+
+        if (!reservasi) {
+            return ApiResponse.error(res, {
+                message: "Reservasi tidak ditemukan",
+                errors: null
+            }, 404)
+        }
+
+        // Cek ketersediaan kamar
+        const kamarGrouped: { idJK: number, amount: number }[] = []
+        reservasi.reservasi_rooms.map((item) => {
+            const existing = kamarGrouped.find((i) => i.idJK === item.id_jenis_kamar)
+            if (existing) {
+                existing.amount += 1
+            } else {
+                kamarGrouped.push({
+                    idJK: item.id_jenis_kamar,
+                    amount: 1
+                })
+            }
+        })
+
+        const extArrivalDate = reservasi.departure_date // sesuai tanggal pertama extend
+        const extDepartureDate = moment(reservasi.departure_date).add(jumlah_malam, 'day').toDate()
+        const ketersediaan = await getKetersediaanKamar(extArrivalDate, extDepartureDate, 7)
+
+        // console.log(extArrivalDate, extDepartureDate)
+        // console.log(kamarGrouped)
+        // console.log(ketersediaan)
+
+        // return ApiResponse.success(res, {
+        //     message: `Berhasil melakukan perpanjangan`,
+        //     data: null
+        // })
+
+        // Looping to get each kamarGrouped's ketersediaan
+        for (const it of kamarGrouped) {
+            const kamar = ketersediaan.find((ket) => ket.id === it.idJK)
+            if (kamar) {
+                if (kamar.kamarTersedia < it.amount) {
+                    return ApiResponse.error(res, {
+                        message: `Tidak bisa melakukan perpanjangan dari sistem karena jumlah kamar yang tersedia tidak mencukupi.`,
+                        errors: null
+                    }, 422)
+                }
+            } else {
+                return ApiResponse.error(res, {
+                    message: `Kamar ${it.idJK} tidak tersedia`,
+                    errors: null
+                }, 422)
+            }
+        }
+
+        // Update departure_date di reservasi
+        await prisma.reservasi.update({
+            where: {
+                id: reservasi.id
+            },
+            data: {
+                departure_date: extDepartureDate
+            }
+        })
+
+        return ApiResponse.success(res, {
+            message: `Berhasil melakukan perpanjangan`,
+            data: null
+        })
+    }
 }
 
 export const router = Router()
@@ -722,3 +872,4 @@ router.post('/checkin/:id', multerUploadDest.single('gambar_identitas'), CheckIn
 router.post('/pesan-layanan/:id', CheckInOutController.pesanLayanan)
 router.get('/catatan-keuangan/:id', CheckInOutController.catatanKeuangan)
 router.post('/checkout/:id', CheckInOutController.checkOut)
+router.post('/perpanjang/:id', CheckInOutController.perpanjang)

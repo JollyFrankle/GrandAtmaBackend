@@ -43,7 +43,7 @@ function getHargaWithMarkup(hargaBasic: number, arrivalDate: Date, departureDate
     }
 }
 
-async function getKetersediaanKamar(arrivalDate: Date, departureDate: Date, maxJumlahMalam?: number) {
+export async function getKetersediaanKamar(arrivalDate: Date, departureDate: Date, maxJumlahMalam?: number) {
     const momentCheckIn = moment(arrivalDate)
     const jumlahMalam = moment(departureDate).diff(momentCheckIn, "days")
 
@@ -779,6 +779,7 @@ async function apiStep3(req: Request, res: Response, idR: number, idC: number, i
         // Customer P: Menggunakan bukti gambar
         const result = await ImageUpload.handlesingleUpload("gambar", bukti)
         if (!result.success) {
+            console.error(result.errors)
             return ApiResponse.error(res, {
                 message: "Gagal mengupload gambar",
                 errors: result.errors
@@ -913,7 +914,7 @@ export default class BookingController {
             return ApiResponse.error(res, {
                 message: error.message,
                 errors: null
-            }, 500)
+            }, 400)
         }
     }
 
@@ -1001,7 +1002,7 @@ export default class BookingController {
             return ApiResponse.error(res, {
                 message: error.message,
                 errors: null
-            }, 500)
+            }, 400)
         }
     }
 
@@ -1046,33 +1047,3 @@ routerP.get("/:idR/deadline", BookingController.getDeadlineBookingSM)
 routerP.post("/:idR/step-1", BookingController.apiStep1BookingSM)
 routerP.post("/:idR/step-2", BookingController.apiStep2BookingSM)
 routerP.post("/:idR/step-3", BookingController.apiStep3BookingSM) // Tidak menggunakan file, tapi "jumlah_dp"
-
-
-// const listTanggal: { tanggal: string, jlhKamar: number }[] = []
-//             for (const reservasi of jumlahKamarTerpesanPerJenisKamar) {
-//                 const arrDate = moment(reservasi.arrival_date)
-//                 const thisListTanggal = []
-
-//                 for (let i = 0; i < reservasi.jumlah_malam!!; i++) {
-//                     // Loop harusnya <=, tapi kita anggap saja tanggal terakhir itu tidak dihitung agar lebih mudah
-//                     const tanggal = arrDate.clone().add(i, "days").format("YYYYMMDD")
-//                     thisListTanggal.push(tanggal)
-//                 }
-//                 const tanggalAsText = thisListTanggal.join("-")
-//                 console.log(tanggalAsText)
-
-//                 listTanggal.push({
-//                     tanggal: tanggalAsText,
-//                     jlhKamar: reservasi.reservasi_rooms.length
-//                 })
-//             }
-
-//             for (const reservasi of jumlahKamarTerpesanPerJenisKamar) {
-//                 for (const rooms of reservasi.reservasi_rooms) {
-//                     const idJK = rooms.id_jenis_kamar
-//                     const objJK = jumlahJenisKamar.find((item) => item.id === idJK)
-
-//                     // @ts-ignore
-//                     objJK.count -= 1
-//                 }
-//             }

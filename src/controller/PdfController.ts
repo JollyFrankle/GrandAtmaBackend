@@ -357,6 +357,7 @@ export default class PdfController {
                 total_layanan: Utils.currencyFormat.format(invoice.total_layanan),
                 grand_total: Utils.currencyFormat.format(invoice.grand_total)
             },
+            denda: invoice.denda_overstay > 0 ? Utils.currencyFormat.format(invoice.denda_overstay) : null,
             kembalian: selisih < 0 ? Utils.currencyFormat.format(-selisih) : null,
             kekurangan: selisih > 0 ? Utils.currencyFormat.format(selisih) : null
         })

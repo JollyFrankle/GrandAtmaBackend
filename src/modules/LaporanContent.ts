@@ -63,7 +63,7 @@ export default class LaporanContent {
         ` as { bulan: number, type: string, total: string }[]
 
         const rawInvoice = await prisma.$queryRaw`
-            SELECT MONTH(tanggal_lunas) AS bulan, LEFT(no_invoice, 1) AS type, SUM((A.total_kamar - (SELECT B.jumlah_dp FROM reservasi B WHERE B.id = A.id_reservasi)) + total_layanan) AS total FROM invoice A
+            SELECT MONTH(tanggal_lunas) AS bulan, LEFT(no_invoice, 1) AS type, SUM((A.total_kamar - (SELECT B.jumlah_dp FROM reservasi B WHERE B.id = A.id_reservasi)) + total_layanan + denda_overstay) AS total FROM invoice A
             WHERE YEAR(tanggal_lunas) = ${tahun}
             GROUP BY bulan, type;
         ` as { bulan: number, type: string, total: string }[]
@@ -165,7 +165,7 @@ export default class LaporanContent {
                     value: formatterMonth.format(new Date(tahun, bulan - 1))
                 }
             ],
-            note: "Jumlah kamar dipesan dihitung berdasarkan tanggal kedatangan reservasi.",
+            note: "Jumlah kamar dipesan dihitung berdasarkan tanggal check in.",
             headers: [
                 { text: 'No', value: 'no', tdCss: `text-align: center;` },
                 { text: 'Jenis Kamar', value: 'jenis_kamar' },

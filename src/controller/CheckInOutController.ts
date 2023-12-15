@@ -697,7 +697,8 @@ export default class CheckInOutController {
 
         const dendaOverstay = await getDendaOverstay(reservasi.departure_date, reservasi.total)
 
-        const selisih = (total + dendaOverstay.denda) - terbayar
+        const grandTotal = total + dendaOverstay.denda
+        const selisih = grandTotal - terbayar
 
         if (+total_dibayar !== selisih) {
             return ApiResponse.error(res, {
@@ -718,7 +719,7 @@ export default class CheckInOutController {
                 total_layanan: totalLayanan,
                 pajak_layanan: sPajakLayanan,
                 denda_overstay: dendaOverstay.denda,
-                grand_total: total
+                grand_total: grandTotal
             }
         })
 
@@ -821,11 +822,6 @@ export default class CheckInOutController {
         // console.log(extArrivalDate, extDepartureDate)
         // console.log(kamarGrouped)
         // console.log(ketersediaan)
-
-        // return ApiResponse.success(res, {
-        //     message: `Berhasil melakukan perpanjangan`,
-        //     data: null
-        // })
 
         // Looping to get each kamarGrouped's ketersediaan
         for (const it of kamarGrouped) {

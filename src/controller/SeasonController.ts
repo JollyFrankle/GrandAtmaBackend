@@ -47,9 +47,30 @@ export default class SeasonController {
             }
         })
 
+        const activeSeason = await prisma.season.findFirst({
+            where: {
+                tanggal_start: {
+                    lte: new Date()
+                },
+                tanggal_end: {
+                    gte: new Date()
+                }
+            },
+            include: {
+                tarif: {
+                    include: {
+                        jenis_kamar: true
+                    }
+                }
+            }
+        })
+
         return ApiResponse.success(res, {
             message: "Berhasil mendapatkan data season",
-            data: seasonList
+            data: {
+                seasons: seasonList,
+                active_season: activeSeason
+            }
         })
     }
 

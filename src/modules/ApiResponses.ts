@@ -7,7 +7,7 @@ export interface ApiResponseOK {
 
 export interface ApiResponseError {
     message: string;
-    errors: any;
+    errors: { [key: string]: string } | null;
 }
 
 export class ApiResponse {

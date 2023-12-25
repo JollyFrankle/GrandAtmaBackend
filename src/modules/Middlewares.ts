@@ -98,7 +98,7 @@ export default class Middlewares {
         console.log(err)
         return ApiResponse.error(res, {
             message: "Internal server error",
-            errors: err
+            errors: err as any
         }, 500)
     }
 

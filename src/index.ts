@@ -9,10 +9,12 @@ import { routerC as UserRouterC, routerP as UserRouterP } from "./controller/Use
 import { routerC as ReservasiRouterC, routerP as ReservasiRouterP } from "./controller/ReservasiController";
 import { router as PDRouter } from "./controller/PublicDataController";
 import { routerPublic as BookingRouterPublic, routerC as BookingRouterC, routerP as BookingRouterP } from "./controller/BookingController";
-import PdfController, { router as PdfRouter } from "./controller/PdfController";
+import { router as PdfRouter } from "./controller/PdfController";
 import { router as UserPegawaiRouter } from "./controller/UserPegawaiController";
-import { router as routerCICO } from "./controller/CheckInOutController";
-import { router as routerLaporan } from "./controller/LaporanController";
+import { router as CICORouter } from "./controller/CheckInOutController";
+import { router as LaporanRouter } from "./controller/LaporanController";
+import { router as FnBRouter } from "./controller/FnBController";
+import { router as FnBKRouter } from "./controller/FnBKategoriController";
 import getIP from "./modules/LocalNetwork";
 import CronJob from "./modules/CronJob";
 import Utils from "./modules/Utils";
@@ -60,8 +62,10 @@ app.use("/pegawai/customer", UserRouterP)
 app.use("/pegawai/reservasi", ReservasiRouterP)
 app.use("/pegawai/booking", BookingRouterP)
 app.use("/pegawai/users", UserPegawaiRouter)
-app.use("/pegawai/fo", routerCICO)
-app.use("/pegawai/laporan", routerLaporan)
+app.use("/pegawai/fo", CICORouter)
+app.use("/pegawai/laporan", LaporanRouter) // @deprecated - not used
+app.use("/pegawai/fnb", FnBRouter)
+app.use("/pegawai/fnb-kategori", FnBRouter)
 
 // Ping
 app.get("/ping", Middlewares.ping)

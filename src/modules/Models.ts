@@ -17,6 +17,9 @@ export type ReservasiLayanan = Prisma.reservasi_layananCreateManyInput
 export type ReservasiLogs = Prisma.reservasi_logsCreateManyInput
 export type Invoice = Prisma.invoiceCreateManyInput
 
+export type FnB = Prisma.fnbCreateManyInput
+export type FnBKaetgori = Prisma.fnb_kategoriCreateManyInput
+
 export interface JwtUserCustomer {
     user_type: 'c'
     id: number

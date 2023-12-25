@@ -209,6 +209,11 @@ export default class FasilitasController {
             }
         })
 
+        // Delete gamabr
+        if (fasilitas.gambar !== null) {
+            await ImageUpload.delete(fasilitas.gambar)
+        }
+
         return ApiResponse.success(res, {
             message: "Berhasil menghapus fasilitas",
             data: fasilitas

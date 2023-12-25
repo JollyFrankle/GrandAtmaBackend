@@ -110,4 +110,24 @@ export default class ImageUpload {
                 } as UploadError
             })
     }
+
+    static async delete(uid: string) {
+        const image = await prisma.images.findUnique({
+            where: {
+                uid: uid
+            }
+        })
+
+        if (image === null) {
+            return false
+        }
+
+        await prisma.images.delete({
+            where: {
+                uid: uid
+            }
+        })
+
+        return true
+    }
 }
